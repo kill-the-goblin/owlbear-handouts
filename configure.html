@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Set Handout Links</title>
+    <style>
+      body { margin: 0; padding: 10px 10px 5px; font-family: system-ui, sans-serif; font-size: 13px; color: #f0f0f0; }
+      .hint { display: flex; align-items: center; justify-content: flex-end; gap: 4px; white-space: nowrap; color: #aaa; font-size: 11px; margin-bottom: 10px; }
+      .hint svg { flex-shrink: 0; }
+      .hint .separator { margin: 0 3px; }
+      #link-list { max-height: 85px; overflow-y: auto; scrollbar-width: thin; }
+      .field-row { display: grid; grid-template-columns: 12px 70px minmax(0, 1fr) 20px 28px 28px; align-items: center; column-gap: 5px; row-gap: 3px; margin-bottom: 8px; }
+      .link-number { width: 12px; flex-shrink: 0; color: #aaa; text-align: right; }
+      .link-type { width: 70px; flex-shrink: 0; box-sizing: border-box; padding: 5px 3px; font-family: inherit; font-size: 12px; color: #f0f0f0; background: #343434; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 4px; }
+      .link-url { grid-column: 2 / -1; grid-row: 2; width: 100%; min-width: 0; box-sizing: border-box; padding: 6px 8px; font-size: 12px; color: #f0f0f0; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 4px; }
+      .link-url::placeholder { color: #999; }
+      .link-url:focus, .link-type:focus { outline: none; border-color: #8b9dc3; }
+      .link-action { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 28px; height: 30px; padding: 0; color: #f0f0f0; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 4px; cursor: pointer; }
+      .link-action:hover { background: rgba(255, 255, 255, 0.16); }
+      .link-action:disabled { color: #777; cursor: default; }
+      .remove-link { grid-column: 4; grid-row: 1; width: 20px; height: 30px; padding: 0; color: #ef6b6b; background: transparent; border: 0; border-radius: 4px; cursor: pointer; font-size: 18px; }
+      .field-row .link-action:nth-last-child(2) { grid-column: 5; grid-row: 1; }
+      .field-row .link-action:last-child { grid-column: 6; grid-row: 1; }
+      .remove-link:hover { background: rgba(239, 107, 107, 0.14); }
+      #controls { display: flex; align-items: center; min-height: 28px; }
+      #save-status { color: #aaa; font-size: 11px; }
+      #add-link { margin: 0 0 0 auto; padding: 2px 0; color: #b8c8ea; background: transparent; border: 0; cursor: pointer; font: inherit; }
+      #add-link:disabled { color: #777; cursor: default; }
+    </style>
+  </head>
+  <body>
+    <form id="link-form">
+      <div class="hint">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span>Private View</span><span class="separator">·</span>
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg>
+        <span>Present to Players</span>
+      </div>
+      <div id="link-list"></div>
+      <div id="controls"><span id="save-status" role="status" aria-live="polite"></span><button type="button" id="add-link">+ Add Link</button></div>
+    </form>
+    <script type="module" src="/src/configure.ts"></script>
+  </body>
+</html>
