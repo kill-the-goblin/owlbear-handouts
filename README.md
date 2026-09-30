@@ -23,9 +23,9 @@ npm install
 npm run dev
 ```
 
-This starts a Vite dev server (default `http://localhost:5173`). In Owlbear
+This starts a Vite dev server (default `http://localhost:11207`). In Owlbear
 Rodeo, go to Extensions -> Manage Extensions -> Add custom extension, and
-point it at `http://localhost:5173/manifest.json`.
+point it at `http://localhost:11207/manifest.json`.
 
 ## Build
 

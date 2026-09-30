@@ -4,6 +4,8 @@ import { resolve } from "path";
 export default defineConfig({
   server: {
     cors: true,
+    port: 11207,
+    strictPort: true,
   },
   build: {
     rollupOptions: {
