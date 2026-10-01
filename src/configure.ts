@@ -1,8 +1,8 @@
 import OBR, { Item, isImage } from "@owlbear-rodeo/sdk";
 import { chooseAsset } from "./assets";
+import { presentHandout } from "./presentation";
 import {
   METADATA_KEY,
-  BROADCAST_SHOW_CHANNEL,
   VIEWER_MODAL_ID,
   MAX_HANDOUT_LINKS,
   createHandoutMetadata,
@@ -64,10 +64,10 @@ function renderRows() {
     const type = document.createElement("select");
     type.className = "link-type";
     type.setAttribute("aria-label", `Link ${index + 1} type`);
-    for (const value of ["asset", "image", "page"] as const) {
+    for (const value of ["asset", "link"] as const) {
       const option = document.createElement("option");
       option.value = value;
-      option.textContent = value === "asset" ? "Asset" : value === "image" ? "Image" : "Page";
+      option.textContent = value === "asset" ? "Asset" : "Link";
       type.appendChild(option);
     }
     type.value = link.type;
@@ -75,7 +75,7 @@ function renderRows() {
     const url = document.createElement("input");
     url.className = "link-url";
     url.type = "url";
-    url.placeholder = "https://...";
+    url.placeholder = "Add URL...";
     url.value = link.url;
     url.title = link.url;
     url.setAttribute("aria-label", `Link ${index + 1} URL`);
@@ -84,7 +84,8 @@ function renderRows() {
     const picker = document.createElement("button");
     picker.type = "button";
     picker.className = "asset-picker";
-    picker.textContent = link.type === "asset" ? link.name || "Change asset" : "Choose Asset...";
+    picker.textContent = link.type === "asset" ? link.name || "Choose Asset..." : "Choose Asset...";
+    picker.classList.toggle("is-placeholder", link.type !== "asset" || !link.name);
     picker.title = link.type === "asset" ? link.name || link.url : "Choose an Owlbear asset";
     picker.hidden = link.type !== "asset";
 
@@ -114,7 +115,8 @@ function renderRows() {
       picker.hidden = !isAsset;
       if (isAsset) {
         if (link.type === "asset") url.value = link.url;
-        picker.textContent = link.type === "asset" ? link.name || "Change asset" : "Choose Asset...";
+        picker.textContent = link.type === "asset" ? link.name || "Choose Asset..." : "Choose Asset...";
+        picker.classList.toggle("is-placeholder", link.type !== "asset" || !link.name);
       } else if (link.type === "asset") {
         url.value = "";
         url.title = "";
@@ -133,6 +135,7 @@ function renderRows() {
         link.name = asset.name;
         url.value = asset.url;
         picker.textContent = asset.name;
+        picker.classList.remove("is-placeholder");
         picker.title = asset.name;
         updateActions();
         updateAddButton();
@@ -225,7 +228,7 @@ async function openLink(link: HandoutLink, action: "private" | "present") {
     });
   } else {
     const message: ModalShowMessage = { id: crypto.randomUUID(), url, contentType, tokenName, assetName: link.name };
-    await OBR.broadcast.sendMessage(BROADCAST_SHOW_CHANNEL, message, { destination: "ALL" });
+    await presentHandout(message);
   }
 }
 

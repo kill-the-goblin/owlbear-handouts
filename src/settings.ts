@@ -1,8 +1,8 @@
 import OBR, { BoundingBox, Item, isImage } from "@owlbear-rodeo/sdk";
 import { chooseAsset } from "./assets";
+import { presentHandout } from "./presentation";
 import { version } from "../package.json";
 import {
-  BROADCAST_SHOW_CHANNEL,
   VIEWER_MODAL_ID,
   METADATA_KEY,
   PREVIEW_SIZE_KEY,
@@ -11,8 +11,6 @@ import {
   DEFAULT_PREVIEW_SIZE,
   MAX_HANDOUT_LINKS,
   createHandoutMetadata,
-  MIN_PREVIEW_HEIGHT,
-  MAX_PREVIEW_HEIGHT,
   readPreviewSize,
   readPreviewLocation,
   readHandoutLinks,
@@ -72,10 +70,10 @@ function buildLinkRow(
   const typeSelect = document.createElement("select");
   typeSelect.className = "link-type";
   typeSelect.setAttribute("aria-label", `Link ${index + 1} type`);
-  for (const type of ["asset", "image", "page"] as const) {
+  for (const type of ["asset", "link"] as const) {
     const option = document.createElement("option");
     option.value = type;
-    option.textContent = type === "asset" ? "Asset" : type === "image" ? "Image" : "Page";
+    option.textContent = type === "asset" ? "Asset" : "Link";
     typeSelect.appendChild(option);
   }
   typeSelect.value = link.type;
@@ -84,6 +82,7 @@ function buildLinkRow(
   const urlInput = document.createElement("input");
   urlInput.className = "link-url";
   urlInput.type = "url";
+  urlInput.placeholder = "Add URL...";
   urlInput.value = link.url;
   urlInput.title = link.url;
   urlInput.setAttribute("aria-label", `Link ${index + 1} URL`);
@@ -93,7 +92,8 @@ function buildLinkRow(
   const picker = document.createElement("button");
   picker.type = "button";
   picker.className = "asset-picker";
-  picker.textContent = link.type === "asset" ? link.name || "Change asset" : "Choose Asset...";
+  picker.textContent = link.type === "asset" ? link.name || "Choose Asset..." : "Choose Asset...";
+  picker.classList.toggle("is-placeholder", link.type !== "asset" || !link.name);
   picker.title = link.type === "asset" ? link.name || link.url : "Choose an Owlbear asset";
   picker.hidden = link.type !== "asset";
   picker.addEventListener("click", (event) => event.stopPropagation());
@@ -160,7 +160,8 @@ function buildLinkRow(
     picker.hidden = !isAsset;
     if (isAsset) {
       if (link.type === "asset") urlInput.value = link.url;
-      picker.textContent = link.type === "asset" ? link.name || "Change asset" : "Choose Asset...";
+      picker.textContent = link.type === "asset" ? link.name || "Choose Asset..." : "Choose Asset...";
+      picker.classList.toggle("is-placeholder", link.type !== "asset" || !link.name);
     } else if (link.type === "asset") {
       urlInput.value = "";
       urlInput.title = "";
@@ -176,6 +177,7 @@ function buildLinkRow(
       urlInput.value = asset.url;
       assetName = asset.name;
       picker.textContent = asset.name;
+      picker.classList.remove("is-placeholder");
       picker.title = asset.name;
       updateButtons();
       await saveCurrent();
@@ -237,7 +239,7 @@ function render(items: Item[]) {
     addButton.type = "button";
     addButton.className = "link-action add-action";
     addButton.textContent = "+";
-    addButton.title = "Add link to token";
+    addButton.title = "Add asset or link to token";
     addButton.setAttribute("aria-label", addButton.title);
     addButton.disabled = links.length >= MAX_HANDOUT_LINKS;
 
@@ -314,9 +316,7 @@ async function showLink(url: string, contentType: ModalContentType, tokenName: s
     return;
   }
   const message: ModalShowMessage = { id: crypto.randomUUID(), url, contentType, tokenName, assetName };
-  await OBR.broadcast.sendMessage(BROADCAST_SHOW_CHANNEL, message, {
-    destination: "ALL",
-  });
+  await presentHandout(message);
 }
 
 function padBounds(bounds: BoundingBox, factor: number): BoundingBox {
@@ -371,14 +371,16 @@ OBR.onReady(async () => {
   }
   await resizeOpenPreview(initialSize);
   previewSizeInput.addEventListener("change", async () => {
-    const size = Number(previewSizeInput.value);
-    if (!Number.isInteger(size) || size < MIN_PREVIEW_HEIGHT || size > MAX_PREVIEW_HEIGHT) {
+    const size = previewSizeInput.valueAsNumber;
+    if (!Number.isFinite(size)) {
       const current = await OBR.room.getMetadata();
       previewSizeInput.value = String(readPreviewSize(current[PREVIEW_SIZE_KEY]).height);
       return;
     }
-    await OBR.room.setMetadata({ [PREVIEW_SIZE_KEY]: readPreviewSize({ height: size }) });
-    await resizeOpenPreview(size);
+    const clampedSize = readPreviewSize({ height: size });
+    previewSizeInput.value = String(clampedSize.height);
+    await OBR.room.setMetadata({ [PREVIEW_SIZE_KEY]: clampedSize });
+    await resizeOpenPreview(clampedSize.height);
   });
 });
 

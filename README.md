@@ -1,13 +1,13 @@
 # Handouts
 
 Handouts is an Owlbear Rodeo extension. It allows the GM/DM to attach up to three handouts to any token, choosing
-Asset, Image, or Page for each. Each link can be opened either privately in a full-screen GM view or presented to players in a full-screen view. While presenting, the GM keeps the map visible and gets a small preview with a Dismiss button.
+Asset or Link for each. Each link can be opened either privately in a full-screen GM view or presented to players in a full-screen view. While presenting, the GM keeps the map visible and gets a small preview with a Dismiss button. Players joining during a presentation see the active handout automatically.
 The preview defaults to 400 × 300 pixels at the bottom left. The GM can change its height and location in the Handouts settings panel; its width follows a 4:3 ratio. Both settings are saved per room.
 
 ## Scope
 
 - Trigger: token context menu or Handouts settings panel (no click/hover triggers yet).
-- Content: existing Owlbear image assets, direct image URLs, or iframe pages.
+- Content: existing Owlbear image assets or external URLs. Links ending in a common image-file extension render as images; other links render as iframe pages.
   Local files (`file://`) and Obsidian vault notes are not supported yet.
 
 ## Dev
@@ -35,7 +35,7 @@ files over HTTPS (Owlbear extensions must be served over HTTPS in production;
 
 - `background.html` / `src/background.ts` - always-loaded hidden page.
   Registers metadata-filtered Handouts context-menu variants sized for the
-  token's saved link count and handles broadcasts.
+  token's saved link count and synchronizes the active presentation from room metadata.
 - `configure.html` / `src/configure.ts` - embedded Handouts menu (GM only) with
   Owlbear asset selection or typed URLs, private-view and present buttons, and automatic saving.
 - `viewer.html` / `src/viewer.ts` - the actual modal content page opened via

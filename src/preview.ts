@@ -1,5 +1,6 @@
 import OBR from "@owlbear-rodeo/sdk";
-import { BROADCAST_HIDE_CHANNEL } from "./constants";
+import { isImageLink } from "./constants";
+import { dismissHandout } from "./presentation";
 
 const params = new URLSearchParams(window.location.search);
 const id = params.get("id") ?? "";
@@ -13,13 +14,13 @@ const title = document.querySelector<HTMLSpanElement>("#title")!;
 const dismiss = document.querySelector<HTMLButtonElement>("#dismiss")!;
 
 const typeLabel = document.createElement("strong");
-typeLabel.textContent = contentType === "asset" ? "Asset" : contentType === "image" ? "Image" : "Page";
+typeLabel.textContent = contentType === "asset" ? "Asset" : "Link";
 title.replaceChildren(typeLabel, `: ${tokenName}`);
 title.title = `${typeLabel.textContent}: ${tokenName}`;
 urlLabel.textContent = contentType === "asset" ? assetName || "Owlbear asset" : url;
 urlLabel.title = url;
 
-if (contentType === "image" || contentType === "asset") {
+if (contentType === "asset" || isImageLink(url)) {
   const image = document.createElement("img");
   image.src = url;
   image.alt = "Handout preview";
@@ -36,7 +37,7 @@ OBR.onReady(async () => {
   dismiss.addEventListener("click", async () => {
     dismiss.disabled = true;
     try {
-      await OBR.broadcast.sendMessage(BROADCAST_HIDE_CHANNEL, id, { destination: "ALL" });
+      await dismissHandout(id);
     } catch {
       dismiss.disabled = false;
     }

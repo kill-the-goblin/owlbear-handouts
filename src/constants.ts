@@ -4,8 +4,7 @@ export const METADATA_KEY = `${EXTENSION_ID}/link`;
 
 export const CONTEXT_MENU_CONFIGURE_ID = `${EXTENSION_ID}/configure`;
 
-export const BROADCAST_SHOW_CHANNEL = `${EXTENSION_ID}/modal-show`;
-export const BROADCAST_HIDE_CHANNEL = `${EXTENSION_ID}/modal-hide`;
+export const ACTIVE_PRESENTATION_KEY = `${EXTENSION_ID}/active-presentation`;
 
 export const VIEWER_MODAL_ID = `${EXTENSION_ID}/viewer-modal`;
 export const PREVIEW_POPOVER_ID = `${EXTENSION_ID}/preview-popover`;
@@ -19,7 +18,7 @@ export interface PreviewSize {
 
 export const DEFAULT_PREVIEW_SIZE: PreviewSize = { width: 400, height: 300 };
 export const MIN_PREVIEW_HEIGHT = 200;
-export const MAX_PREVIEW_HEIGHT = 600;
+export const MAX_PREVIEW_HEIGHT = 450;
 
 export type PreviewLocation = "bottom-left" | "bottom-right" | "top-left" | "top-right";
 export const DEFAULT_PREVIEW_LOCATION: PreviewLocation = "bottom-left";
@@ -33,14 +32,20 @@ export function readPreviewLocation(value: unknown): PreviewLocation {
 export function readPreviewSize(value: unknown): PreviewSize {
   if (!value || typeof value !== "object") return DEFAULT_PREVIEW_SIZE;
   const size = value as Partial<PreviewSize>;
-  if (
-    typeof size.height !== "number" || !Number.isInteger(size.height) ||
-    size.height < MIN_PREVIEW_HEIGHT || size.height > MAX_PREVIEW_HEIGHT
-  ) return DEFAULT_PREVIEW_SIZE;
-  return { width: Math.round(size.height * 4 / 3), height: size.height };
+  if (typeof size.height !== "number" || !Number.isFinite(size.height)) return DEFAULT_PREVIEW_SIZE;
+  const height = Math.min(MAX_PREVIEW_HEIGHT, Math.max(MIN_PREVIEW_HEIGHT, Math.round(size.height)));
+  return { width: Math.round(height * 4 / 3), height };
 }
 
-export type ModalContentType = "asset" | "image" | "page";
+export type ModalContentType = "asset" | "link";
+
+export function isImageLink(url: string): boolean {
+  try {
+    return /\.(?:apng|avif|bmp|gif|jpe?g|png|svg|webp)$/i.test(new URL(url).pathname);
+  } catch {
+    return false;
+  }
+}
 
 export const MAX_HANDOUT_LINKS = 3;
 
@@ -59,8 +64,7 @@ export function createHandoutMetadata(links: HandoutLink[]): HandoutLinks {
   return { links, linkCount: links.length };
 }
 
-// Older tokens stored one imageUrl and one pageUrl. Read both shapes so their
-// links remain available until the next edit writes the new format.
+// Treat earlier Image and Page entries as links; the URL now determines rendering.
 export function readHandoutLinks(value: unknown): HandoutLink[] {
   if (!value || typeof value !== "object") return [];
   const data = value as { links?: unknown; imageUrl?: unknown; pageUrl?: unknown };
@@ -68,12 +72,12 @@ export function readHandoutLinks(value: unknown): HandoutLink[] {
     return data.links
       .filter((link): link is HandoutLink =>
         link !== null && typeof link === "object" &&
-        (link.type === "asset" || link.type === "image" || link.type === "page") &&
+        (link.type === "asset" || link.type === "link" || link.type === "image" || link.type === "page") &&
         typeof link.url === "string" && link.url.trim().length > 0,
       )
       .slice(0, MAX_HANDOUT_LINKS)
       .map((link) => ({
-        type: link.type,
+        type: link.type === "asset" ? "asset" : "link",
         url: link.url.trim(),
         ...(link.type === "asset" && typeof link.name === "string" && link.name.trim()
           ? { name: link.name.trim() }
@@ -82,10 +86,10 @@ export function readHandoutLinks(value: unknown): HandoutLink[] {
   }
   const links: HandoutLink[] = [];
   if (typeof data.imageUrl === "string" && data.imageUrl.trim()) {
-    links.push({ type: "image", url: data.imageUrl.trim() });
+    links.push({ type: "link", url: data.imageUrl.trim() });
   }
   if (typeof data.pageUrl === "string" && data.pageUrl.trim()) {
-    links.push({ type: "page", url: data.pageUrl.trim() });
+    links.push({ type: "link", url: data.pageUrl.trim() });
   }
   return links;
 }
@@ -96,4 +100,27 @@ export interface ModalShowMessage {
   contentType: ModalContentType;
   tokenName: string;
   assetName?: string;
+}
+
+export interface ActivePresentation extends ModalShowMessage {
+  presenterConnectionId: string;
+}
+
+export function readActivePresentation(value: unknown): ActivePresentation | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const data = value as Partial<ActivePresentation>;
+  if (
+    typeof data.id !== "string" || !data.id ||
+    typeof data.url !== "string" || !data.url.trim() ||
+    (data.contentType !== "asset" && data.contentType !== "link") ||
+    typeof data.presenterConnectionId !== "string" || !data.presenterConnectionId
+  ) return undefined;
+  return {
+    id: data.id,
+    url: data.url,
+    contentType: data.contentType,
+    tokenName: typeof data.tokenName === "string" ? data.tokenName : "Token",
+    presenterConnectionId: data.presenterConnectionId,
+    ...(typeof data.assetName === "string" ? { assetName: data.assetName } : {}),
+  };
 }

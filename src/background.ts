@@ -2,8 +2,7 @@ import OBR from "@owlbear-rodeo/sdk";
 import {
   EXTENSION_ID,
   CONTEXT_MENU_CONFIGURE_ID,
-  BROADCAST_SHOW_CHANNEL,
-  BROADCAST_HIDE_CHANNEL,
+  ACTIVE_PRESENTATION_KEY,
   PREVIEW_POPOVER_ID,
   PREVIEW_SIZE_KEY,
   PREVIEW_LOCATION_KEY,
@@ -14,9 +13,11 @@ import {
   readHandoutLinks,
   readPreviewSize,
   readPreviewLocation,
+  readActivePresentation,
   PreviewLocation,
   ModalContentType,
   ModalShowMessage,
+  ActivePresentation,
 } from "./constants";
 
 function viewerUrl(url: string, contentType: ModalContentType, mode: "private" | "player"): string {
@@ -51,13 +52,16 @@ async function syncLinkCounts() {
 
 OBR.onReady(async () => {
   const isGm = (await OBR.player.getRole()) === "GM";
+  const ownConnectionId = await OBR.player.getConnectionId();
   let activeShowId: string | undefined;
-  let activeShowMessage: ModalShowMessage | undefined;
+  let activeShowMessage: ActivePresentation | undefined;
   let activePreviewLocation: PreviewLocation | undefined;
+  let latestMetadata: Record<string, unknown> | undefined;
+  let syncQueue: Promise<void> = Promise.resolve();
 
-  const openGmPreview = async (message: ModalShowMessage) => {
-    const [viewportWidth, viewportHeight, metadata] = await Promise.all([
-      OBR.viewport.getWidth(), OBR.viewport.getHeight(), OBR.room.getMetadata(),
+  const openGmPreview = async (message: ActivePresentation, metadata: Record<string, unknown>) => {
+    const [viewportWidth, viewportHeight] = await Promise.all([
+      OBR.viewport.getWidth(), OBR.viewport.getHeight(),
     ]);
     if (activeShowId !== message.id) return;
     const size = readPreviewSize(metadata[PREVIEW_SIZE_KEY]);
@@ -124,51 +128,72 @@ OBR.onReady(async () => {
     }
   }
 
-  OBR.broadcast.onMessage(BROADCAST_SHOW_CHANNEL, async (event) => {
-    const message = event.data as ModalShowMessage;
-    const hadActiveHandout = activeShowId !== undefined;
-    activeShowId = message.id;
-    if (isGm) {
-      activeShowMessage = message;
-      if (hadActiveHandout) await OBR.popover.close(PREVIEW_POPOVER_ID);
-      await openGmPreview(message);
-    } else {
-      if (hadActiveHandout) await OBR.modal.close(VIEWER_MODAL_ID);
-      if (activeShowId !== message.id) return;
-      await OBR.modal.open({
-        id: VIEWER_MODAL_ID,
-        url: viewerUrl(message.url, message.contentType, "player"),
-        fullScreen: true,
-        hidePaper: true,
-        hideBackdrop: true,
-      });
-    }
-  });
+  const synchronize = async () => {
+    const metadata = latestMetadata;
+    if (!metadata) return;
+    const stored = readActivePresentation(metadata[ACTIVE_PRESENTATION_KEY]);
+    const presenterConnected = stored && (
+      stored.presenterConnectionId === ownConnectionId ||
+      (await OBR.party.getPlayers()).some((player) => player.connectionId === stored.presenterConnectionId)
+    );
+    const message = presenterConnected ? stored : undefined;
 
-  OBR.broadcast.onMessage(BROADCAST_HIDE_CHANNEL, async (event) => {
-    if (event.data !== activeShowId) return;
-    activeShowId = undefined;
-    activeShowMessage = undefined;
-    activePreviewLocation = undefined;
-    if (isGm) await OBR.popover.close(PREVIEW_POPOVER_ID);
-    else await OBR.modal.close(VIEWER_MODAL_ID);
-  });
-
-  if (isGm) {
-    OBR.room.onMetadataChange(async (metadata) => {
-      const message = activeShowMessage;
-      if (!message || activeShowId !== message.id) return;
-      const location = readPreviewLocation(metadata[PREVIEW_LOCATION_KEY]);
-      if (location !== activePreviewLocation) {
-        await OBR.popover.close(PREVIEW_POPOVER_ID);
-        if (activeShowId === message.id) await openGmPreview(message);
-        return;
+    if (activeShowId !== message?.id) {
+      if (activeShowId) {
+        if (isGm) await OBR.popover.close(PREVIEW_POPOVER_ID);
+        else await OBR.modal.close(VIEWER_MODAL_ID);
       }
-      const size = readPreviewSize(metadata[PREVIEW_SIZE_KEY]);
-      await Promise.allSettled([
-        OBR.popover.setWidth(PREVIEW_POPOVER_ID, size.width),
-        OBR.popover.setHeight(PREVIEW_POPOVER_ID, size.height),
-      ]);
-    });
+      activeShowId = message?.id;
+      activeShowMessage = isGm ? message : undefined;
+      activePreviewLocation = undefined;
+      if (!message) return;
+
+      if (isGm) {
+        await openGmPreview(message, metadata);
+      } else {
+        await OBR.modal.open({
+          id: VIEWER_MODAL_ID,
+          url: viewerUrl(message.url, message.contentType, "player"),
+          fullScreen: true,
+          hidePaper: true,
+          hideBackdrop: true,
+        });
+      }
+      return;
+    }
+
+    if (!isGm || !activeShowMessage) return;
+    const location = readPreviewLocation(metadata[PREVIEW_LOCATION_KEY]);
+    if (location !== activePreviewLocation) {
+      await OBR.popover.close(PREVIEW_POPOVER_ID);
+      await openGmPreview(activeShowMessage, metadata);
+      return;
+    }
+    const size = readPreviewSize(metadata[PREVIEW_SIZE_KEY]);
+    await Promise.allSettled([
+      OBR.popover.setWidth(PREVIEW_POPOVER_ID, size.width),
+      OBR.popover.setHeight(PREVIEW_POPOVER_ID, size.height),
+    ]);
+  };
+
+  const queueSync = () => {
+    syncQueue = syncQueue.catch(() => {}).then(synchronize);
+  };
+
+  // Subscribe before reading the initial value, so a change during startup
+  // cannot be replaced by an older snapshot.
+  let receivedMetadataChange = false;
+  OBR.room.onMetadataChange((metadata) => {
+    receivedMetadataChange = true;
+    latestMetadata = metadata;
+    queueSync();
+  });
+  OBR.party.onChange(() => {
+    if (latestMetadata) queueSync();
+  });
+  const initialMetadata = await OBR.room.getMetadata();
+  if (!receivedMetadataChange) {
+    latestMetadata = initialMetadata;
+    queueSync();
   }
 });

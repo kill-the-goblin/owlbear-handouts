@@ -1,5 +1,5 @@
 import OBR from "@owlbear-rodeo/sdk";
-import { VIEWER_MODAL_ID, ModalContentType } from "./constants";
+import { VIEWER_MODAL_ID, ModalContentType, isImageLink } from "./constants";
 
 const params = new URLSearchParams(window.location.search);
 const url = params.get("url") ?? "";
@@ -21,7 +21,7 @@ OBR.onReady(async () => {
   const role = await OBR.player.getRole();
   const isGm = role === "GM";
 
-  if (contentType === "image" || contentType === "asset") {
+  if (contentType === "asset" || isImageLink(url)) {
     const img = document.createElement("img");
     img.src = url;
     img.alt = "";
@@ -49,7 +49,7 @@ OBR.onReady(async () => {
       const note = document.createElement("div");
       note.id = "iframe-note";
       note.textContent =
-        "If this looks blank, the site may be blocking embedding (common on many pages) -- try Image mode with a direct file URL instead.";
+        "If this looks blank, the site may be blocking embedding. Try a direct image-file URL instead.";
       document.body.appendChild(note);
     }
   }
@@ -61,7 +61,7 @@ OBR.onReady(async () => {
   closeButton.hidden = false;
   closeButton.addEventListener("click", () => OBR.modal.close(VIEWER_MODAL_ID));
 
-  if (contentType === "image" || contentType === "asset") {
+  if (contentType === "asset" || isImageLink(url)) {
     container.classList.add("dismissable");
     container.addEventListener("click", () => OBR.modal.close(VIEWER_MODAL_ID));
   }

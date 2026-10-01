@@ -135,6 +135,8 @@
         padding: 3px 5px;
         cursor: pointer;
       }
+      .asset-picker.is-placeholder { font-style: italic; }
+      .link-url::placeholder { font-style: italic; }
       .asset-picker:hover { border-color: rgba(255, 255, 255, 0.2); }
       .link-url:hover {
         border-color: rgba(255, 255, 255, 0.2);
@@ -240,7 +242,7 @@
       </div>
       <div class="preview-control">
         <label for="preview-size">Preview Height</label>
-        <input id="preview-size" type="number" min="200" max="600" step="1" value="300" aria-label="Preview height in pixels" />
+        <input id="preview-size" type="number" min="200" max="450" step="1" value="300" aria-label="Preview height in pixels" />
         <span id="preview-unit">px</span>
       </div>
     </div>
