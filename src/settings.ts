@@ -6,7 +6,7 @@ import {
   VIEWER_MODAL_ID, METADATA_KEY, SCENE_HANDOUTS_KEY,
   PREVIEW_SIZE_KEY, PREVIEW_LOCATION_KEY, PREVIEW_POPOVER_ID,
   DEFAULT_PREVIEW_SIZE, readPreviewSize, readPreviewLocation,
-  readHandoutLinks, readSceneHandouts, switchHandoutType,
+  readHandoutLinks, readSceneHandouts, switchHandoutType, reorderHandouts, moveHandout,
   SceneHandout, ModalContentType, ModalShowMessage,
 } from "./constants";
 
@@ -23,10 +23,13 @@ document.querySelector<HTMLSpanElement>("#header-version")!.textContent = versio
 
 const EYE_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
 const CAST_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg>';
+const GRIP_ICON = '<svg viewBox="0 0 16 20" width="12" height="18" fill="currentColor" aria-hidden="true"><circle cx="5" cy="4" r="1.3"/><circle cx="11" cy="4" r="1.3"/><circle cx="5" cy="10" r="1.3"/><circle cx="11" cy="10" r="1.3"/><circle cx="5" cy="16" r="1.3"/><circle cx="11" cy="16" r="1.3"/></svg>';
 
 let handouts: SceneHandout[] = [];
+const expandedIds = new Set<string>();
 let saveQueue: Promise<void> = Promise.resolve();
 let sceneReady = false;
+let drag: { row: HTMLLIElement; pointerId: number; startY: number; y: number; active: boolean; frame: number | null } | null = null;
 addButton.disabled = true;
 
 function legacyTokenName(item: Item): string {
@@ -67,14 +70,48 @@ async function loadScene() {
 }
 
 function render() {
+  if (drag) cancelDrag();
   const query = searchInput.value.trim().toLocaleLowerCase();
   const visible = handouts.filter((handout) => handout.title.toLocaleLowerCase().includes(query));
   countEl.textContent = `${handouts.length} Handout${handouts.length === 1 ? "" : "s"}`;
-  listEl.replaceChildren(...visible.map(buildRow));
+  listEl.replaceChildren(...visible.map((handout) => buildRow(handout, !query && handouts.length > 1)));
   emptyEl.hidden = visible.length > 0;
   emptyEl.textContent = handouts.length === 0
     ? "No handouts in this scene yet."
     : "No handouts match your search.";
+}
+
+function cancelDrag() {
+  if (!drag) return;
+  if (drag.frame !== null) cancelAnimationFrame(drag.frame);
+  drag.row.classList.remove("is-dragging");
+  if (listEl.hasPointerCapture(drag.pointerId)) listEl.releasePointerCapture(drag.pointerId);
+  drag = null;
+}
+
+function positionDraggedRow() {
+  if (!drag?.active) return;
+  const bounds = listEl.getBoundingClientRect();
+  if (drag.y < bounds.top + 32) listEl.scrollTop -= 8;
+  if (drag.y > bounds.bottom - 32) listEl.scrollTop += 8;
+  const others = [...listEl.children].filter((child) => child !== drag!.row) as HTMLLIElement[];
+  const before = others.find((row) => drag!.y < row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2);
+  listEl.insertBefore(drag.row, before ?? null);
+  drag.frame = requestAnimationFrame(positionDraggedRow);
+}
+
+function beginDrag(event: PointerEvent, row: HTMLLIElement) {
+  if (drag || !event.isPrimary || (event.pointerType === "mouse" && event.button !== 0)) return;
+  event.preventDefault();
+  listEl.setPointerCapture(event.pointerId);
+  drag = { row, pointerId: event.pointerId, startY: event.clientY, y: event.clientY, active: false, frame: null };
+}
+
+function focusHandle(id: string) {
+  const row = [...listEl.children].find((child) => (child as HTMLLIElement).dataset.handoutId === id);
+  const handle = row?.querySelector<HTMLButtonElement>(".drag-handle");
+  handle?.focus({ preventScroll: true });
+  row?.scrollIntoView({ block: "nearest" });
 }
 
 async function changeList(update: (list: SceneHandout[]) => SceneHandout[]) {
@@ -110,16 +147,37 @@ function actionButton(icon: string, title: string): HTMLButtonElement {
   return button;
 }
 
-function buildRow(handout: SceneHandout): HTMLLIElement {
+function buildRow(handout: SceneHandout, canReorder: boolean): HTMLLIElement {
   const li = document.createElement("li");
+  li.dataset.handoutId = handout.id;
   const top = document.createElement("div");
   top.className = "entry-top";
+  const expanded = expandedIds.has(handout.id);
+  li.classList.toggle("is-expanded", expanded);
+  const handle = actionButton(GRIP_ICON, canReorder
+    ? `Reorder ${handout.title}; use arrow keys`
+    : "Clear search to reorder handouts");
+  handle.classList.add("drag-handle");
+  handle.disabled = !canReorder;
+  handle.addEventListener("pointerdown", (event) => beginDrag(event, li));
+  handle.addEventListener("keydown", async (event) => {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    event.preventDefault();
+    const direction = event.key === "ArrowUp" ? -1 : 1;
+    try {
+      await changeList((list) => moveHandout(list, handout.id, direction));
+      focusHandle(handout.id);
+    } catch { /* Status is shown by changeList. */ }
+  });
+  const expand = actionButton(expanded ? "▾" : "▸", `${expanded ? "Hide" : "Edit"} ${handout.title} details`);
+  expand.classList.add("expand-button");
+  expand.setAttribute("aria-expanded", String(expanded));
   const title = document.createElement("input");
   title.className = "entry-name";
   title.type = "text";
   title.value = handout.title;
   title.placeholder = "Handout name";
-  title.title = "Rename handout";
+  title.title = "Rename Handout";
   title.setAttribute("aria-label", "Handout name");
   title.addEventListener("keydown", (event) => { if (event.key === "Enter") title.blur(); });
   title.addEventListener("change", async () => {
@@ -157,13 +215,28 @@ function buildRow(handout: SceneHandout): HTMLLIElement {
   });
   remove.addEventListener("click", async () => {
     if (!confirm(`Delete “${handout.title}” from this scene?`)) return;
-    try { await changeList((list) => list.filter((entry) => entry.id !== handout.id)); }
+    try {
+      await changeList((list) => list.filter((entry) => entry.id !== handout.id));
+      expandedIds.delete(handout.id);
+    }
     catch { /* Status is shown by changeList. */ }
   });
-  top.append(title, view, present, remove);
+  top.append(handle, expand, title, remove, view, present);
 
   const bottom = document.createElement("div");
   bottom.className = "entry-bottom";
+  bottom.hidden = !expanded;
+  expand.addEventListener("click", () => {
+    const open = !expandedIds.has(handout.id);
+    if (open) expandedIds.add(handout.id);
+    else expandedIds.delete(handout.id);
+    li.classList.toggle("is-expanded", open);
+    bottom.hidden = !open;
+    expand.textContent = open ? "▾" : "▸";
+    expand.title = `${open ? "Hide" : "Edit"} ${handout.title} details`;
+    expand.setAttribute("aria-label", expand.title);
+    expand.setAttribute("aria-expanded", String(open));
+  });
   const type = document.createElement("select");
   type.className = "entry-type";
   type.setAttribute("aria-label", `${handout.title} type`);
@@ -237,9 +310,32 @@ OBR.onReady(async () => {
   }
 
   searchInput.addEventListener("input", render);
+  listEl.addEventListener("pointermove", (event) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    drag.y = event.clientY;
+    if (!drag.active && Math.abs(drag.y - drag.startY) > 4) {
+      drag.active = true;
+      drag.row.classList.add("is-dragging");
+      drag.frame = requestAnimationFrame(positionDraggedRow);
+    }
+  });
+  listEl.addEventListener("pointerup", (event) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const changed = drag.active;
+    if (changed) positionDraggedRow();
+    const ids = [...listEl.children].map((row) => (row as HTMLLIElement).dataset.handoutId!);
+    cancelDrag();
+    if (changed) void changeList((list) => reorderHandouts(list, ids)).catch(() => render());
+  });
+  listEl.addEventListener("pointercancel", (event) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    cancelDrag();
+    render();
+  });
   addButton.addEventListener("click", async () => {
-    const entry: SceneHandout = { id: crypto.randomUUID(), title: "New Handout", type: "asset", url: "" };
+    const entry: SceneHandout = { id: crypto.randomUUID(), title: "Handout", type: "asset", url: "" };
     try {
+      expandedIds.add(entry.id);
       await changeList((list) => [...list, entry]);
       searchInput.value = "";
       render();
@@ -247,7 +343,10 @@ OBR.onReady(async () => {
       const nameInput = listEl.lastElementChild?.querySelector<HTMLInputElement>(".entry-name");
       nameInput?.focus({ preventScroll: true });
       nameInput?.select();
-    } catch { /* Status is shown by changeList. */ }
+    } catch {
+      expandedIds.delete(entry.id);
+      /* Status is shown by changeList. */
+    }
   });
   OBR.scene.onMetadataChange((metadata) => {
     if (!sceneReady) return;

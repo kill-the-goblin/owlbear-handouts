@@ -63,6 +63,28 @@ export interface SceneHandout extends HandoutLink {
   inactiveName?: string;
 }
 
+export function reorderHandouts(list: SceneHandout[], ids: string[]): SceneHandout[] {
+  const byId = new Map(list.map((entry) => [entry.id, entry]));
+  const ordered: SceneHandout[] = [];
+  for (const id of ids) {
+    const entry = byId.get(id);
+    if (entry) {
+      ordered.push(entry);
+      byId.delete(id);
+    }
+  }
+  return [...ordered, ...byId.values()];
+}
+
+export function moveHandout(list: SceneHandout[], id: string, direction: -1 | 1): SceneHandout[] {
+  const index = list.findIndex((entry) => entry.id === id);
+  const target = index + direction;
+  if (index < 0 || target < 0 || target >= list.length) return list;
+  const next = [...list];
+  [next[index], next[target]] = [next[target], next[index]];
+  return next;
+}
+
 export function switchHandoutType(handout: SceneHandout, type: ModalContentType): SceneHandout {
   if (handout.type === type) return handout;
   return {
