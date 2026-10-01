@@ -11,7 +11,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         background: resolve(__dirname, "background.html"),
-        configure: resolve(__dirname, "configure.html"),
         viewer: resolve(__dirname, "viewer.html"),
         settings: resolve(__dirname, "settings.html"),
         preview: resolve(__dirname, "preview.html"),

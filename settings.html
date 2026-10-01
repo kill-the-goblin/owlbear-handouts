@@ -41,6 +41,35 @@
         padding: 16px 12px;
         color: #aaa;
       }
+      #list-tools {
+        display: flex;
+        gap: 8px;
+        padding: 9px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+      }
+      #list-tools[hidden] { display: none; }
+      #search {
+        flex: 1;
+        min-width: 0;
+        padding: 5px 7px;
+        color: #f0f0f0;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        font: inherit;
+      }
+      #add-handout {
+        padding: 5px 9px;
+        color: #f0f0f0;
+        background: #3a526e;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        font: inherit;
+        cursor: pointer;
+      }
+      #add-handout:disabled { opacity: .5; cursor: default; }
+      #status { color: #efb56b; padding: 0 12px; }
+      #status:empty { display: none; }
       #list {
         list-style: none;
         margin: 0;
@@ -52,7 +81,6 @@
       }
       #list li {
         padding: 8px 12px;
-        cursor: pointer;
       }
       #list li:hover {
         background: rgba(255, 255, 255, 0.08);
@@ -60,6 +88,63 @@
       #list li + li {
         border-top: 1px solid rgba(255, 255, 255, 0.08);
       }
+      .entry-top, .entry-bottom { display: flex; align-items: center; gap: 7px; }
+      .entry-top { margin-bottom: 6px; }
+      .entry-name {
+        flex: 1;
+        min-width: 0;
+        padding: 3px 5px;
+        color: #f0f0f0;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        font: 600 15px system-ui, sans-serif;
+      }
+      .entry-name:hover, .entry-name:focus {
+        border-color: rgba(255, 255, 255, 0.25);
+        background: rgba(255, 255, 255, 0.07);
+        outline: none;
+      }
+      .entry-type {
+        width: 70px;
+        flex-shrink: 0;
+        padding: 3px;
+        color: #f0f0f0;
+        background: #343434;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        font-family: inherit;
+        font-size: 13px;
+      }
+      .entry-url {
+        flex: 1;
+        min-width: 0;
+        padding: 4px 5px;
+        color: #ddd;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        font-family: inherit;
+        font-size: 13px;
+      }
+      .entry-url::placeholder { font-style: italic; }
+      .icon-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 25px;
+        height: 25px;
+        padding: 0;
+        flex-shrink: 0;
+        color: #f0f0f0;
+        background: transparent;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .icon-button:hover { background: rgba(255, 255, 255, 0.14); }
+      .icon-button:disabled { color: #666; cursor: default; }
+      .delete-button { color: #ef6b6b; font-size: 17px; }
       .row-header {
         display: flex;
         align-items: center;
@@ -210,7 +295,7 @@
       #preview-location:focus { outline: none; border-color: #8b9dc3; }
       #preview-size {
         box-sizing: border-box;
-        width: 68px;
+        width: 73px;
         padding: 4px 5px;
         color: #f0f0f0;
         background: rgba(255, 255, 255, 0.06);
@@ -219,6 +304,7 @@
         font: inherit;
         text-align: right;
       }
+      #preview-size::-webkit-inner-spin-button { margin-left: 5px; }
       #preview-size:focus { outline: none; border-color: #8b9dc3; }
       #preview-unit { color: #aaa; }
     </style>
@@ -228,7 +314,12 @@
       <span id="header-name"><span id="header-title">Handouts</span><span id="header-version"></span></span>
       <span id="header-count"></span>
     </div>
-    <div id="empty" hidden>No tokens have a handout link set yet.</div>
+    <div id="list-tools">
+      <input id="search" type="search" placeholder="Search Handouts..." aria-label="Search handouts" />
+      <button id="add-handout" type="button">+ Add Handout</button>
+    </div>
+    <div id="status" role="status"></div>
+    <div id="empty" hidden>No handouts in this scene yet.</div>
     <ul id="list"></ul>
     <div id="preview-settings">
       <div class="preview-control">

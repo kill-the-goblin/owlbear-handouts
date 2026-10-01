@@ -1,9 +1,9 @@
 {
   "name": "Handouts",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "manifest_version": 1,
   "author": "Neal Enssle",
-  "description": "Attach an Owlbear Rodeo asset, link to an image, or link to a web page to a token and present it full-screen to players.",
+  "description": "Keep a searchable list of handouts for each scene. Privately view an asset or link, or present it full-screen to players.",
   "icon": "/icon.svg",
   "background_url": "/background.html",
   "action": {

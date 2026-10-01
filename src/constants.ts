@@ -1,6 +1,7 @@
 export const EXTENSION_ID = "com.nealenssle.owlbear-modals";
 
 export const METADATA_KEY = `${EXTENSION_ID}/link`;
+export const SCENE_HANDOUTS_KEY = `${EXTENSION_ID}/scene-handouts`;
 
 export const CONTEXT_MENU_CONFIGURE_ID = `${EXTENSION_ID}/configure`;
 
@@ -55,6 +56,28 @@ export interface HandoutLink {
   name?: string;
 }
 
+export interface SceneHandout extends HandoutLink {
+  id: string;
+  title: string;
+}
+
+export function readSceneHandouts(value: unknown): SceneHandout[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is SceneHandout =>
+    entry !== null && typeof entry === "object" &&
+    typeof entry.id === "string" && entry.id.length > 0 &&
+    typeof entry.title === "string" &&
+    (entry.type === "asset" || entry.type === "link") &&
+    typeof entry.url === "string",
+  ).map((entry) => ({
+    id: entry.id,
+    title: entry.title,
+    type: entry.type,
+    url: entry.url,
+    ...(typeof entry.name === "string" ? { name: entry.name } : {}),
+  }));
+}
+
 export interface HandoutLinks {
   links: HandoutLink[];
   linkCount: number;
@@ -98,7 +121,7 @@ export interface ModalShowMessage {
   id: string;
   url: string;
   contentType: ModalContentType;
-  tokenName: string;
+  handoutName: string;
   assetName?: string;
 }
 
@@ -119,7 +142,7 @@ export function readActivePresentation(value: unknown): ActivePresentation | und
     id: data.id,
     url: data.url,
     contentType: data.contentType,
-    tokenName: typeof data.tokenName === "string" ? data.tokenName : "Token",
+    handoutName: typeof data.handoutName === "string" ? data.handoutName : "Handout",
     presenterConnectionId: data.presenterConnectionId,
     ...(typeof data.assetName === "string" ? { assetName: data.assetName } : {}),
   };

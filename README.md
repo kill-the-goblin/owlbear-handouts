@@ -1,45 +1,35 @@
 # Handouts
 
-Handouts is an Owlbear Rodeo extension. It allows the GM/DM to attach up to three handouts to any token, choosing
-Asset or Link for each. Each link can be opened either privately in a full-screen GM view or presented to players in a full-screen view. While presenting, the GM keeps the map visible and gets a small preview with a Dismiss button. Players joining during a presentation see the active handout automatically.
-The preview defaults to 400 × 300 pixels at the bottom left. The GM can change its height and location in the Handouts settings panel; its width follows a 4:3 ratio. Both settings are saved per room.
+Handouts is an Owlbear Rodeo extension for keeping a named, searchable list of handouts in each scene. The GM can privately view a handout or present it full-screen to players. During a presentation, the GM keeps the map visible and gets a small preview with a Dismiss button. Players joining mid-presentation see the active handout.
 
-## Scope
+Handouts can use an existing Owlbear Rodeo image asset or an external URL. Image URLs render as images; other URLs render as iframe pages. Some websites prevent embedding. Local files and Obsidian vault notes are not supported.
 
-- Trigger: token context menu or Handouts settings panel (no click/hover triggers yet).
-- Content: existing Owlbear image assets or external URLs. Links ending in a common image-file extension render as images; other links render as iframe pages.
-  Local files (`file://`) and Obsidian vault notes are not supported yet.
+The preview defaults to 400 × 300 pixels at the bottom left. The GM can change its height and location in the Handouts panel; these settings are saved per room.
 
-## Dev
+## Use
+
+Open Handouts from Owlbear's extension action. Choose **+ Add Handout**, click its name to rename it, and choose an **Asset** or **Link**. Search filters the scene list by name. Use the eye icon to view privately or the present icon to show it to players.
+
+Existing token handouts are copied into the scene list once, when that scene is first opened with this version. The old token metadata is left intact as a backup. Each scene has its own list.
+
+## Development
 
 ```
 npm install
 npm run dev
 ```
 
-This starts a Vite dev server (default `http://localhost:11207`). In Owlbear
-Rodeo, go to Extensions -> Manage Extensions -> Add custom extension, and
-point it at `http://localhost:11207/manifest.json`.
-
-## Build
+This starts Vite at `http://localhost:11207`. In Owlbear Rodeo, add `http://localhost:11207/manifest.json` as a custom extension.
 
 ```
 npm run build
 ```
 
-Outputs static files to `dist/`, ready to deploy anywhere that serves static
-files over HTTPS (Owlbear extensions must be served over HTTPS in production;
-`localhost` is allowed for development).
+This produces the static extension in `dist/`. Production hosting must use HTTPS.
 
-## How it works
+## Code
 
-- `background.html` / `src/background.ts` - always-loaded hidden page.
-  Registers metadata-filtered Handouts context-menu variants sized for the
-  token's saved link count and synchronizes the active presentation from room metadata.
-- `configure.html` / `src/configure.ts` - embedded Handouts menu (GM only) with
-  Owlbear asset selection or typed URLs, private-view and present buttons, and automatic saving.
-- `viewer.html` / `src/viewer.ts` - the actual modal content page opened via
-  `OBR.modal.open`. Renders an `<img>` or `<iframe>`. A private GM viewer has
-  a local close button; a player viewer is controlled by the GM.
-- `preview.html` / `src/preview.ts` - compact GM preview shown during a player
-  presentation, with the shared Dismiss button.
+- `src/settings.ts` manages scene handouts, search, asset selection, private viewing, and presentation.
+- `src/background.ts` synchronizes the active presentation through room metadata, including for late joiners.
+- `src/viewer.ts` renders images or web pages in the full-screen viewer.
+- `src/preview.ts` renders the GM preview and Dismiss control.

@@ -6,7 +6,7 @@ const params = new URLSearchParams(window.location.search);
 const id = params.get("id") ?? "";
 const url = params.get("url") ?? "";
 const contentType = params.get("contentType");
-const tokenName = params.get("tokenName")?.trim() || "Token";
+const handoutName = params.get("handoutName")?.trim() || "Handout";
 const assetName = params.get("assetName")?.trim();
 const content = document.querySelector<HTMLDivElement>("#content")!;
 const urlLabel = document.querySelector<HTMLDivElement>("#url")!;
@@ -15,8 +15,8 @@ const dismiss = document.querySelector<HTMLButtonElement>("#dismiss")!;
 
 const typeLabel = document.createElement("strong");
 typeLabel.textContent = contentType === "asset" ? "Asset" : "Link";
-title.replaceChildren(typeLabel, `: ${tokenName}`);
-title.title = `${typeLabel.textContent}: ${tokenName}`;
+title.replaceChildren(typeLabel, `: ${handoutName}`);
+title.title = `${typeLabel.textContent}: ${handoutName}`;
 urlLabel.textContent = contentType === "asset" ? assetName || "Owlbear asset" : url;
 urlLabel.title = url;
 

@@ -7,10 +7,7 @@ import {
   PREVIEW_SIZE_KEY,
   PREVIEW_LOCATION_KEY,
   VIEWER_MODAL_ID,
-  METADATA_KEY,
   MAX_HANDOUT_LINKS,
-  createHandoutMetadata,
-  readHandoutLinks,
   readPreviewSize,
   readPreviewLocation,
   readActivePresentation,
@@ -25,29 +22,7 @@ function viewerUrl(url: string, contentType: ModalContentType, mode: "private" |
 }
 
 function previewUrl(message: ModalShowMessage): string {
-  return `/preview.html?${new URLSearchParams({ id: message.id, url: message.url, contentType: message.contentType, tokenName: message.tokenName || "Token", assetName: message.assetName || "" })}`;
-}
-
-const MENU_HEIGHTS = [150, 150, 220, 290];
-
-async function syncLinkCounts() {
-  const items = await OBR.scene.items.getItems();
-  const staleIds = items.flatMap((item) => {
-    const value = item.metadata[METADATA_KEY];
-    const links = readHandoutLinks(value);
-    if (!links.length) return [];
-    const savedCount = value && typeof value === "object"
-      ? (value as { linkCount?: unknown }).linkCount
-      : undefined;
-    return savedCount === links.length ? [] : [item.id];
-  });
-  if (!staleIds.length) return;
-  await OBR.scene.items.updateItems(staleIds, (itemsToUpdate) => {
-    for (const item of itemsToUpdate) {
-      const links = readHandoutLinks(item.metadata[METADATA_KEY]);
-      if (links.length) item.metadata[METADATA_KEY] = createHandoutMetadata(links);
-    }
-  });
+  return `/preview.html?${new URLSearchParams({ id: message.id, url: message.url, contentType: message.contentType, handoutName: message.handoutName || "Handout", assetName: message.assetName || "" })}`;
 }
 
 OBR.onReady(async () => {
@@ -95,37 +70,6 @@ OBR.onReady(async () => {
       ...Array.from({ length: MAX_HANDOUT_LINKS + 1 }, (_, count) =>
         OBR.contextMenu.remove(`${CONTEXT_MENU_CONFIGURE_ID}-${count}`)),
     ]);
-    await Promise.all(Array.from({ length: MAX_HANDOUT_LINKS + 1 }, (_, count) =>
-      OBR.contextMenu.create({
-        id: `${CONTEXT_MENU_CONFIGURE_ID}-${count}`,
-        icons: [{
-          icon: "/menu-icon.svg",
-          label: "Handouts",
-          filter: {
-            max: 1,
-            roles: ["GM"],
-            every: [{
-              key: ["metadata", METADATA_KEY, "linkCount"],
-              value: count === 0 ? undefined : count,
-            }],
-          },
-        }],
-        embed: {
-          url: `/configure.html?rows=${Math.max(1, count)}`,
-          height: MENU_HEIGHTS[count],
-        },
-      })),
-    );
-
-    if (await OBR.scene.isReady()) {
-      await syncLinkCounts();
-    } else {
-      const unsubscribe = OBR.scene.onReadyChange((ready) => {
-        if (!ready) return;
-        unsubscribe();
-        void syncLinkCounts();
-      });
-    }
   }
 
   const synchronize = async () => {
