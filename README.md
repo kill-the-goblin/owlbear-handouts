@@ -1,13 +1,8 @@
-# Tabletop Handouts
+# Handouts
 
-Owlbear Rodeo extension. GM attaches up to three links to a token, choosing
-Image or Page for each. Multiple links can have the same type. Each link can
-be opened privately in a full-screen GM view or presented to
-players in a full-screen view. While presenting, the GM keeps the map visible
-and gets a small preview with a Dismiss button.
-The preview defaults to 400 × 300 pixels. The GM can change its height
-at the bottom of the Handouts settings panel; its width follows a 4:3 ratio.
-The setting is saved per room.
+Handouts is an Owlbear Rodeo extension. It allows the GM/DM to attack up to three links to any token, choosing
+Image or Page for each. Each link can be opened either privately in a full-screen GM view or presented to players in a full-screen view. While presenting, the GM keeps the map visible and gets a small preview with a Dismiss button.
+The preview defaults to 400 × 300 pixels. The GM can change its height at the bottom of the Handouts settings panel; its width follows a 4:3 ratio. The setting is saved per room.
 
 ## v1 scope
 
