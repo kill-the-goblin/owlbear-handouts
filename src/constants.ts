@@ -1,3 +1,5 @@
+import type { ImageAssetType } from "@owlbear-rodeo/sdk";
+
 export const EXTENSION_ID = "com.nealenssle.owlbear-modals";
 
 export const METADATA_KEY = `${EXTENSION_ID}/link`;
@@ -59,8 +61,15 @@ export interface HandoutLink {
 export interface SceneHandout extends HandoutLink {
   id: string;
   title: string;
+  assetCategory?: ImageAssetType;
   inactiveUrl?: string;
   inactiveName?: string;
+}
+
+const ASSET_CATEGORIES = ["MAP", "PROP", "MOUNT", "CHARACTER", "ATTACHMENT", "NOTE"];
+
+function isAssetCategory(value: unknown): value is ImageAssetType {
+  return typeof value === "string" && ASSET_CATEGORIES.includes(value);
 }
 
 export function reorderHandouts(list: SceneHandout[], ids: string[]): SceneHandout[] {
@@ -93,6 +102,7 @@ export function switchHandoutType(handout: SceneHandout, type: ModalContentType)
     type,
     url: handout.inactiveUrl ?? "",
     inactiveUrl: handout.url,
+    ...(handout.assetCategory ? { assetCategory: handout.assetCategory } : {}),
     ...(type === "asset" && handout.inactiveName ? { name: handout.inactiveName } : {}),
     ...(handout.type === "asset" && handout.name ? { inactiveName: handout.name } : {}),
   };
@@ -111,6 +121,7 @@ export function readSceneHandouts(value: unknown): SceneHandout[] {
     title: entry.title,
     type: entry.type,
     url: entry.url,
+    ...(isAssetCategory(entry.assetCategory) ? { assetCategory: entry.assetCategory } : {}),
     ...(typeof entry.name === "string" ? { name: entry.name } : {}),
     ...(typeof entry.inactiveUrl === "string" ? { inactiveUrl: entry.inactiveUrl } : {}),
     ...(typeof entry.inactiveName === "string" ? { inactiveName: entry.inactiveName } : {}),

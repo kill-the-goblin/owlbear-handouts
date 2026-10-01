@@ -1,5 +1,5 @@
 import OBR, { Item, isImage } from "@owlbear-rodeo/sdk";
-import { chooseAsset } from "./assets";
+import { assetLabel, chooseAsset } from "./assets";
 import { presentHandout } from "./presentation";
 import { version } from "../package.json";
 import {
@@ -269,14 +269,14 @@ function buildRow(handout: SceneHandout, canReorder: boolean): HTMLLIElement {
   const picker = document.createElement("button");
   picker.type = "button";
   picker.className = "asset-picker";
-  picker.textContent = handout.name || "Choose Asset...";
+  picker.textContent = handout.name ? assetLabel(handout.name, handout.assetCategory) : "Choose Asset...";
   picker.classList.toggle("is-placeholder", !handout.name);
-  picker.title = handout.name || "Choose an Owlbear asset";
+  picker.title = handout.name ? assetLabel(handout.name, handout.assetCategory) : "Choose an Owlbear asset";
   picker.hidden = handout.type !== "asset";
   picker.addEventListener("click", async () => {
     try {
       const asset = await chooseAsset();
-      if (asset) await updateHandout(handout.id, { url: asset.url, name: asset.name });
+      if (asset) await updateHandout(handout.id, { url: asset.url, name: asset.name, assetCategory: asset.category });
     } catch { statusEl.textContent = "Could not choose or save that asset."; }
   });
   type.addEventListener("change", async () => {

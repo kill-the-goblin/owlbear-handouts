@@ -1,8 +1,21 @@
-import OBR from "@owlbear-rodeo/sdk";
+import OBR, { type ImageAssetType } from "@owlbear-rodeo/sdk";
 
-export async function chooseAsset(): Promise<{ url: string; name: string } | undefined> {
+const CATEGORY_LABELS: Record<ImageAssetType, string> = {
+  MAP: "Maps",
+  PROP: "Props",
+  MOUNT: "Mounts",
+  CHARACTER: "Characters",
+  ATTACHMENT: "Attachments",
+  NOTE: "Notes",
+};
+
+export function assetLabel(name: string, category?: ImageAssetType): string {
+  return category ? `${CATEGORY_LABELS[category]}: ${name}` : name;
+}
+
+export async function chooseAsset(): Promise<{ url: string; name: string; category: ImageAssetType } | undefined> {
   const [asset] = await OBR.assets.downloadImages(false);
   const url = asset?.image.url?.trim();
   if (!url) return undefined;
-  return { url, name: asset.name?.trim() || "Owlbear asset" };
+  return { url, name: asset.name?.trim() || "Owlbear asset", category: asset.type };
 }
