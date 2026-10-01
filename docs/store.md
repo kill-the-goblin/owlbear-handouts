@@ -31,7 +31,7 @@ Players who join mid-presentation see the current handout automatically, allowin
 
 **Asset** selects an image already uploaded as an asset to Owlbear Rodeo. It does not upload a new file.
 
-**Link** displays URLs ending in common image extensions (such as `.png`, `.jpg`, `.gif`, and `.webp`) as full-screen images. Other URLs open as full-screen web pages in an (iframe). Note: Some sites block embedded pages; if a link to a page appears blank or broken, try using a link to a direct image URL file, or a site that allows embedding. Local files and `file://` links cannot be shared through Handouts.
+**Link** displays URLs ending in common image extensions (such as `.png`, `.jpg`, `.gif`, and `.webp`) as full-screen images. Other URLs open as full-screen web pages in an iframe. Note: Some sites block embedded pages; if a link to a page appears blank or broken, try using a link to a direct image URL file, or a site that allows embedding. Local files and `file://` links cannot be shared through Handouts.
 
 ## Support
 
