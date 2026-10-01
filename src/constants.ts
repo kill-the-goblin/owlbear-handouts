@@ -59,6 +59,21 @@ export interface HandoutLink {
 export interface SceneHandout extends HandoutLink {
   id: string;
   title: string;
+  inactiveUrl?: string;
+  inactiveName?: string;
+}
+
+export function switchHandoutType(handout: SceneHandout, type: ModalContentType): SceneHandout {
+  if (handout.type === type) return handout;
+  return {
+    id: handout.id,
+    title: handout.title,
+    type,
+    url: handout.inactiveUrl ?? "",
+    inactiveUrl: handout.url,
+    ...(type === "asset" && handout.inactiveName ? { name: handout.inactiveName } : {}),
+    ...(handout.type === "asset" && handout.name ? { inactiveName: handout.name } : {}),
+  };
 }
 
 export function readSceneHandouts(value: unknown): SceneHandout[] {
@@ -75,6 +90,8 @@ export function readSceneHandouts(value: unknown): SceneHandout[] {
     type: entry.type,
     url: entry.url,
     ...(typeof entry.name === "string" ? { name: entry.name } : {}),
+    ...(typeof entry.inactiveUrl === "string" ? { inactiveUrl: entry.inactiveUrl } : {}),
+    ...(typeof entry.inactiveName === "string" ? { inactiveName: entry.inactiveName } : {}),
   }));
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "Handouts",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "manifest_version": 1,
   "author": "Neal Enssle",
   "description": "Keep a searchable list of handouts for each scene. Privately view an asset or link, or present it full-screen to players.",

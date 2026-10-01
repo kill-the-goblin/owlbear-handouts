@@ -6,7 +6,7 @@ import {
   VIEWER_MODAL_ID, METADATA_KEY, SCENE_HANDOUTS_KEY,
   PREVIEW_SIZE_KEY, PREVIEW_LOCATION_KEY, PREVIEW_POPOVER_ID,
   DEFAULT_PREVIEW_SIZE, readPreviewSize, readPreviewLocation,
-  readHandoutLinks, readSceneHandouts,
+  readHandoutLinks, readSceneHandouts, switchHandoutType,
   SceneHandout, ModalContentType, ModalShowMessage,
 } from "./constants";
 
@@ -208,7 +208,12 @@ function buildRow(handout: SceneHandout): HTMLLIElement {
   });
   type.addEventListener("change", async () => {
     const next = type.value as ModalContentType;
-    try { await updateHandout(handout.id, { type: next, url: "", name: undefined }); }
+    try {
+      await saveQueue;
+      await changeList((list) => list.map((entry) =>
+        entry.id === handout.id ? switchHandoutType(entry, next) : entry,
+      ));
+    }
     catch { type.value = handout.type; }
   });
   bottom.append(type, url, picker);
