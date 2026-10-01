@@ -1,9 +1,9 @@
 {
   "name": "Handouts",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "manifest_version": 1,
   "author": "Neal Enssle",
-  "description": "Attach an asset or URL to a token and present it full-screen to players, dismissable only by the GM.",
+  "description": "Attach an Owlbear Rodeo asset, link to an image, or link to a web page to a token and present it full-screen to players.",
   "icon": "/icon.svg",
   "background_url": "/background.html",
   "action": {

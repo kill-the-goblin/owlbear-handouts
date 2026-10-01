@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Handouts</title>
+  <desc id="desc">A token and an illustrated handout connected by an arrow.</desc>
+  <defs>
+    <linearGradient id="background" x2="1" y2="1">
+      <stop stop-color="#1d2530"/>
+      <stop offset="1" stop-color="#2e3946"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-opacity=".3"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="630" fill="url(#background)"/>
+  <circle cx="1130" cy="80" r="250" fill="#8b5e3c" opacity=".09"/>
+  <circle cx="100" cy="620" r="270" fill="#d3a870" opacity=".06"/>
+  <text x="90" y="215" fill="#fbf5e9" font-family="Arial, Helvetica, sans-serif" font-size="88" font-weight="700">Handouts</text>
+  <text x="94" y="277" fill="#d9c8ae" font-family="Arial, Helvetica, sans-serif" font-size="28">Show the clue when you're ready.</text>
+  <g filter="url(#shadow)">
+    <circle cx="236" cy="425" r="82" fill="#8b5e3c" stroke="#d7b284" stroke-width="5"/>
+    <circle cx="236" cy="425" r="61" fill="#564331" stroke="#e8c99c" stroke-width="2"/>
+    <path d="M208 444v-48h39l16 16v32z" fill="#fbf5e9"/>
+    <path d="M247 396v16h16" fill="#d9c8ae"/>
+    <path d="M217 422h35m-35 10h29" stroke="#8b5e3c" stroke-width="3" stroke-linecap="round"/>
+    <rect x="555" y="108" width="545" height="420" rx="20" fill="#121a23" stroke="#556577" stroke-width="3"/>
+    <rect x="582" y="146" width="491" height="355" rx="8" fill="#fbf5e9"/>
+    <path d="M635 247h220m-220 28h301m-301 28h285" stroke="#ae9474" stroke-width="8" stroke-linecap="round" opacity=".65"/>
+    <path d="M635 390c57-87 113-65 166-116 41 32 76 42 144 10l90 103" fill="none" stroke="#8b5e3c" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="955" cy="223" r="37" fill="#d3a870" opacity=".8"/>
+  </g>
+  <path d="M346 425h153" stroke="#d3a870" stroke-width="9" stroke-linecap="round"/>
+  <path d="m482 405 21 20-21 20" fill="none" stroke="#d3a870" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
