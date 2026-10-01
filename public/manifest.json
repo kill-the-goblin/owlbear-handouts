@@ -1,16 +1,16 @@
 {
   "name": "Handouts",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "manifest_version": 1,
   "author": "Neal Enssle",
-  "description": "Attach a URL to a token and push it as a full-screen modal to every player, dismissable only by the GM.",
+  "description": "Attach an asset or URL to a token and present it full-screen to players, dismissable only by the GM.",
   "icon": "/icon.svg",
   "background_url": "/background.html",
   "action": {
     "title": "Handouts",
     "icon": "/menu-icon.svg",
     "popover": "/settings.html",
-    "height": 420,
+    "height": 350,
     "width": 500
   }
 }

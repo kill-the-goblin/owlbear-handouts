@@ -1,4 +1,5 @@
 import OBR, { Item, isImage } from "@owlbear-rodeo/sdk";
+import { chooseAsset } from "./assets";
 import {
   METADATA_KEY,
   BROADCAST_SHOW_CHANNEL,
@@ -63,10 +64,10 @@ function renderRows() {
     const type = document.createElement("select");
     type.className = "link-type";
     type.setAttribute("aria-label", `Link ${index + 1} type`);
-    for (const value of ["image", "page"] as const) {
+    for (const value of ["asset", "image", "page"] as const) {
       const option = document.createElement("option");
       option.value = value;
-      option.textContent = value === "image" ? "Image" : "Page";
+      option.textContent = value === "asset" ? "Asset" : value === "image" ? "Image" : "Page";
       type.appendChild(option);
     }
     type.value = link.type;
@@ -78,6 +79,14 @@ function renderRows() {
     url.value = link.url;
     url.title = link.url;
     url.setAttribute("aria-label", `Link ${index + 1} URL`);
+    url.hidden = link.type === "asset";
+
+    const picker = document.createElement("button");
+    picker.type = "button";
+    picker.className = "asset-picker";
+    picker.textContent = link.type === "asset" ? link.name || "Change asset" : "Choose Asset...";
+    picker.title = link.type === "asset" ? link.name || link.url : "Choose an Owlbear asset";
+    picker.hidden = link.type !== "asset";
 
     const remove = document.createElement("button");
     remove.type = "button";
@@ -95,16 +104,46 @@ function renderRows() {
       view.setAttribute("aria-label", view.title);
       present.title = `Present ${label} to players`;
       present.setAttribute("aria-label", present.title);
-      view.disabled = present.disabled = !itemId || !url.value.trim();
+      view.disabled = present.disabled = !itemId || !url.value.trim() || type.value !== link.type;
     };
     updateActions();
 
     type.addEventListener("change", () => {
-      link.type = type.value as ModalContentType;
+      const isAsset = type.value === "asset";
+      url.hidden = isAsset;
+      picker.hidden = !isAsset;
+      if (isAsset) {
+        if (link.type === "asset") url.value = link.url;
+        picker.textContent = link.type === "asset" ? link.name || "Change asset" : "Choose Asset...";
+      } else if (link.type === "asset") {
+        url.value = "";
+        url.title = "";
+      } else {
+        link.type = type.value as ModalContentType;
+        if (link.url.trim()) void saveLinks();
+      }
       updateActions();
-      if (link.url.trim()) void saveLinks();
+    });
+    picker.addEventListener("click", async () => {
+      try {
+        const asset = await chooseAsset();
+        if (!asset) return;
+        link.type = "asset";
+        link.url = asset.url;
+        link.name = asset.name;
+        url.value = asset.url;
+        picker.textContent = asset.name;
+        picker.title = asset.name;
+        updateActions();
+        updateAddButton();
+        await saveLinks();
+      } catch {
+        saveStatus.textContent = "Asset picker failed";
+      }
     });
     url.addEventListener("input", () => {
+      link.type = type.value as ModalContentType;
+      delete link.name;
       link.url = url.value;
       url.title = url.value;
       updateActions();
@@ -132,7 +171,7 @@ function renderRows() {
     view.addEventListener("click", () => openLink(link, "private"));
     present.addEventListener("click", () => openLink(link, "present"));
 
-    row.append(number, type, url, remove, view, present);
+    row.append(number, type, url, picker, remove, view, present);
     linkList.appendChild(row);
   });
 }
@@ -145,7 +184,7 @@ function saveLinks(reportErrors = false): Promise<boolean> {
     return Promise.resolve(false);
   }
   const saved = links
-    .map((link) => ({ type: link.type, url: link.url.trim() }))
+    .map((link) => ({ type: link.type, url: link.url.trim(), ...(link.type === "asset" ? { name: link.name } : {}) }))
     .filter((link) => link.url.length > 0)
     .slice(0, MAX_HANDOUT_LINKS);
   const id = itemId;
@@ -185,7 +224,7 @@ async function openLink(link: HandoutLink, action: "private" | "present") {
       hideBackdrop: true,
     });
   } else {
-    const message: ModalShowMessage = { id: crypto.randomUUID(), url, contentType, tokenName };
+    const message: ModalShowMessage = { id: crypto.randomUUID(), url, contentType, tokenName, assetName: link.name };
     await OBR.broadcast.sendMessage(BROADCAST_SHOW_CHANNEL, message, { destination: "ALL" });
   }
 }
@@ -197,15 +236,15 @@ OBR.onReady(async () => {
   const items = await OBR.scene.items.getItems<Item>([itemId]);
   if (items[0]) tokenName = displayName(items[0]);
   links = readHandoutLinks(items[0]?.metadata[METADATA_KEY]);
-  if (!links.length) links.push({ type: "image", url: "" });
+  if (!links.length) links.push({ type: "asset", url: "" });
   renderRows();
 });
 
 addButton.addEventListener("click", () => {
   if (addButton.disabled) return;
-  links.push({ type: "image", url: "" });
+  links.push({ type: "asset", url: "" });
   renderRows();
-  linkList.querySelectorAll<HTMLInputElement>(".link-url").item(links.length - 1)?.focus();
+  linkList.querySelectorAll<HTMLButtonElement>(".asset-picker").item(links.length - 1)?.focus();
 });
 
 form.addEventListener("submit", (event) => {

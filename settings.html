@@ -30,6 +30,8 @@
         font-weight: 600;
         font-size: 19px;
       }
+      #header-name { display: flex; align-items: baseline; gap: 7px; }
+      #header-version { color: #999; font-size: 11px; }
       #header-count {
         flex-shrink: 0;
         color: #aaa;
@@ -117,6 +119,23 @@
         padding: 3px 5px;
         font-family: inherit;
       }
+      .asset-picker {
+        flex-grow: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        text-align: left;
+        color: #ddd;
+        font: inherit;
+        font-size: 13px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid transparent;
+        border-radius: 4px;
+        padding: 3px 5px;
+        cursor: pointer;
+      }
+      .asset-picker:hover { border-color: rgba(255, 255, 255, 0.2); }
       .link-url:hover {
         border-color: rgba(255, 255, 255, 0.2);
       }
@@ -168,13 +187,25 @@
         flex-shrink: 0;
         display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 8px;
         padding: 9px 12px;
         border-top: 1px solid rgba(255, 255, 255, 0.14);
         font-size: 13px;
       }
-      #preview-settings label { flex: 1; }
+      .preview-control { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
       #preview-settings[hidden] { display: none; }
+      #preview-location {
+        box-sizing: border-box;
+        width: 116px;
+        padding: 4px 5px;
+        color: #f0f0f0;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        font: inherit;
+      }
+      #preview-location:focus { outline: none; border-color: #8b9dc3; }
       #preview-size {
         box-sizing: border-box;
         width: 68px;
@@ -192,15 +223,26 @@
   </head>
   <body>
     <div id="header">
-      <span id="header-title">Handouts</span>
+      <span id="header-name"><span id="header-title">Handouts</span><span id="header-version"></span></span>
       <span id="header-count"></span>
     </div>
     <div id="empty" hidden>No tokens have a handout link set yet.</div>
     <ul id="list"></ul>
     <div id="preview-settings">
-      <label for="preview-size">Preview Window Height</label>
-      <input id="preview-size" type="number" min="200" max="600" step="1" value="300" aria-label="Preview window height in pixels" />
-      <span id="preview-unit">px</span>
+      <div class="preview-control">
+        <label for="preview-location">Preview Location</label>
+        <select id="preview-location">
+          <option value="bottom-left">Bottom Left</option>
+          <option value="bottom-right">Bottom Right</option>
+          <option value="top-left">Top Left</option>
+          <option value="top-right">Top Right</option>
+        </select>
+      </div>
+      <div class="preview-control">
+        <label for="preview-size">Preview Height</label>
+        <input id="preview-size" type="number" min="200" max="600" step="1" value="300" aria-label="Preview height in pixels" />
+        <span id="preview-unit">px</span>
+      </div>
     </div>
     <script type="module" src="/src/settings.ts"></script>
   </body>

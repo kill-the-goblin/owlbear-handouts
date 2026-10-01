@@ -21,7 +21,7 @@ OBR.onReady(async () => {
   const role = await OBR.player.getRole();
   const isGm = role === "GM";
 
-  if (contentType === "image") {
+  if (contentType === "image" || contentType === "asset") {
     const img = document.createElement("img");
     img.src = url;
     img.alt = "";
@@ -61,7 +61,7 @@ OBR.onReady(async () => {
   closeButton.hidden = false;
   closeButton.addEventListener("click", () => OBR.modal.close(VIEWER_MODAL_ID));
 
-  if (contentType === "image") {
+  if (contentType === "image" || contentType === "asset") {
     container.classList.add("dismissable");
     container.addEventListener("click", () => OBR.modal.close(VIEWER_MODAL_ID));
   }

@@ -6,12 +6,15 @@ import {
   BROADCAST_HIDE_CHANNEL,
   PREVIEW_POPOVER_ID,
   PREVIEW_SIZE_KEY,
+  PREVIEW_LOCATION_KEY,
   VIEWER_MODAL_ID,
   METADATA_KEY,
   MAX_HANDOUT_LINKS,
   createHandoutMetadata,
   readHandoutLinks,
   readPreviewSize,
+  readPreviewLocation,
+  PreviewLocation,
   ModalContentType,
   ModalShowMessage,
 } from "./constants";
@@ -21,7 +24,7 @@ function viewerUrl(url: string, contentType: ModalContentType, mode: "private" |
 }
 
 function previewUrl(message: ModalShowMessage): string {
-  return `/preview.html?${new URLSearchParams({ id: message.id, url: message.url, contentType: message.contentType, tokenName: message.tokenName || "Token" })}`;
+  return `/preview.html?${new URLSearchParams({ id: message.id, url: message.url, contentType: message.contentType, tokenName: message.tokenName || "Token", assetName: message.assetName || "" })}`;
 }
 
 const MENU_HEIGHTS = [150, 150, 220, 290];
@@ -49,6 +52,34 @@ async function syncLinkCounts() {
 OBR.onReady(async () => {
   const isGm = (await OBR.player.getRole()) === "GM";
   let activeShowId: string | undefined;
+  let activeShowMessage: ModalShowMessage | undefined;
+  let activePreviewLocation: PreviewLocation | undefined;
+
+  const openGmPreview = async (message: ModalShowMessage) => {
+    const [viewportWidth, viewportHeight, metadata] = await Promise.all([
+      OBR.viewport.getWidth(), OBR.viewport.getHeight(), OBR.room.getMetadata(),
+    ]);
+    if (activeShowId !== message.id) return;
+    const size = readPreviewSize(metadata[PREVIEW_SIZE_KEY]);
+    const location = readPreviewLocation(metadata[PREVIEW_LOCATION_KEY]);
+    const horizontal = location.endsWith("right") ? "RIGHT" : "LEFT";
+    const vertical = location.startsWith("top") ? "TOP" : "BOTTOM";
+    await OBR.popover.open({
+      id: PREVIEW_POPOVER_ID,
+      url: previewUrl(message),
+      width: size.width,
+      height: size.height,
+      anchorReference: "POSITION",
+      anchorPosition: {
+        left: horizontal === "RIGHT" ? viewportWidth - 16 : 16,
+        top: vertical === "TOP" ? 80 : viewportHeight - 80,
+      },
+      anchorOrigin: { horizontal, vertical },
+      transformOrigin: { horizontal, vertical },
+      disableClickAway: true,
+    });
+    activePreviewLocation = location;
+  };
 
   if (isGm) {
     // Remove the four standalone actions left by an already loaded older build.
@@ -98,23 +129,9 @@ OBR.onReady(async () => {
     const hadActiveHandout = activeShowId !== undefined;
     activeShowId = message.id;
     if (isGm) {
+      activeShowMessage = message;
       if (hadActiveHandout) await OBR.popover.close(PREVIEW_POPOVER_ID);
-      const [viewportHeight, metadata] = await Promise.all([
-        OBR.viewport.getHeight(), OBR.room.getMetadata(),
-      ]);
-      const size = readPreviewSize(metadata[PREVIEW_SIZE_KEY]);
-      if (activeShowId !== message.id) return;
-      await OBR.popover.open({
-        id: PREVIEW_POPOVER_ID,
-        url: previewUrl(message),
-        width: size.width,
-        height: size.height,
-        anchorReference: "POSITION",
-        anchorPosition: { left: 16, top: viewportHeight - 16 },
-        anchorOrigin: { horizontal: "LEFT", vertical: "BOTTOM" },
-        transformOrigin: { horizontal: "LEFT", vertical: "BOTTOM" },
-        disableClickAway: true,
-      });
+      await openGmPreview(message);
     } else {
       if (hadActiveHandout) await OBR.modal.close(VIEWER_MODAL_ID);
       if (activeShowId !== message.id) return;
@@ -131,13 +148,22 @@ OBR.onReady(async () => {
   OBR.broadcast.onMessage(BROADCAST_HIDE_CHANNEL, async (event) => {
     if (event.data !== activeShowId) return;
     activeShowId = undefined;
+    activeShowMessage = undefined;
+    activePreviewLocation = undefined;
     if (isGm) await OBR.popover.close(PREVIEW_POPOVER_ID);
     else await OBR.modal.close(VIEWER_MODAL_ID);
   });
 
   if (isGm) {
     OBR.room.onMetadataChange(async (metadata) => {
-      if (!activeShowId) return;
+      const message = activeShowMessage;
+      if (!message || activeShowId !== message.id) return;
+      const location = readPreviewLocation(metadata[PREVIEW_LOCATION_KEY]);
+      if (location !== activePreviewLocation) {
+        await OBR.popover.close(PREVIEW_POPOVER_ID);
+        if (activeShowId === message.id) await openGmPreview(message);
+        return;
+      }
       const size = readPreviewSize(metadata[PREVIEW_SIZE_KEY]);
       await Promise.allSettled([
         OBR.popover.setWidth(PREVIEW_POPOVER_ID, size.width),

@@ -1,9 +1,12 @@
 import OBR, { BoundingBox, Item, isImage } from "@owlbear-rodeo/sdk";
+import { chooseAsset } from "./assets";
+import { version } from "../package.json";
 import {
   BROADCAST_SHOW_CHANNEL,
   VIEWER_MODAL_ID,
   METADATA_KEY,
   PREVIEW_SIZE_KEY,
+  PREVIEW_LOCATION_KEY,
   PREVIEW_POPOVER_ID,
   DEFAULT_PREVIEW_SIZE,
   MAX_HANDOUT_LINKS,
@@ -11,6 +14,7 @@ import {
   MIN_PREVIEW_HEIGHT,
   MAX_PREVIEW_HEIGHT,
   readPreviewSize,
+  readPreviewLocation,
   readHandoutLinks,
   HandoutLink,
   ModalContentType,
@@ -20,7 +24,9 @@ import {
 const listEl = document.querySelector<HTMLUListElement>("#list")!;
 const emptyEl = document.querySelector<HTMLDivElement>("#empty")!;
 const headerCountEl = document.querySelector<HTMLSpanElement>("#header-count")!;
+document.querySelector<HTMLSpanElement>("#header-version")!.textContent = version;
 const previewSizeInput = document.querySelector<HTMLInputElement>("#preview-size")!;
+const previewLocationSelect = document.querySelector<HTMLSelectElement>("#preview-location")!;
 const previewSettings = document.querySelector<HTMLDivElement>("#preview-settings")!;
 
 const EYE_ICON_SVG =
@@ -66,10 +72,10 @@ function buildLinkRow(
   const typeSelect = document.createElement("select");
   typeSelect.className = "link-type";
   typeSelect.setAttribute("aria-label", `Link ${index + 1} type`);
-  for (const type of ["image", "page"] as const) {
+  for (const type of ["asset", "image", "page"] as const) {
     const option = document.createElement("option");
     option.value = type;
-    option.textContent = type === "image" ? "Image" : "Page";
+    option.textContent = type === "asset" ? "Asset" : type === "image" ? "Image" : "Page";
     typeSelect.appendChild(option);
   }
   typeSelect.value = link.type;
@@ -82,6 +88,16 @@ function buildLinkRow(
   urlInput.title = link.url;
   urlInput.setAttribute("aria-label", `Link ${index + 1} URL`);
   urlInput.addEventListener("click", (event) => event.stopPropagation());
+  urlInput.hidden = link.type === "asset";
+
+  const picker = document.createElement("button");
+  picker.type = "button";
+  picker.className = "asset-picker";
+  picker.textContent = link.type === "asset" ? link.name || "Change asset" : "Choose Asset...";
+  picker.title = link.type === "asset" ? link.name || link.url : "Choose an Owlbear asset";
+  picker.hidden = link.type !== "asset";
+  picker.addEventListener("click", (event) => event.stopPropagation());
+  let assetName = link.name;
 
   const removeButton = document.createElement("button");
   removeButton.type = "button";
@@ -105,8 +121,10 @@ function buildLinkRow(
     viewButton.setAttribute("aria-label", viewButton.title);
     showButton.title = `Present ${typeSelect.value} to players`;
     showButton.setAttribute("aria-label", showButton.title);
-    showButton.disabled = !urlInput.value.trim();
-    viewButton.disabled = !urlInput.value.trim();
+    const hasSelection = Boolean(urlInput.value.trim()) &&
+      (typeSelect.value !== "asset" || link.type === "asset");
+    showButton.disabled = !hasSelection;
+    viewButton.disabled = !hasSelection;
   };
   updateButtons();
   urlInput.addEventListener("input", updateButtons);
@@ -121,12 +139,15 @@ function buildLinkRow(
     const updated: HandoutLink = {
       type: typeSelect.value as ModalContentType,
       url: urlInput.value.trim(),
+      ...(typeSelect.value === "asset" ? { name: assetName } : {}),
     };
     if (!updated.url) {
-      if (!isDraft) await removeLink(itemId, index);
+      if (!isDraft && typeSelect.value !== "asset" && link.type !== "asset") {
+        await removeLink(itemId, index);
+      }
       return false;
     }
-    if (isDraft || updated.type !== link.type || updated.url !== link.url) {
+    if (isDraft || updated.type !== link.type || updated.url !== link.url || updated.name !== link.name) {
       await saveLink(itemId, index, updated);
       isDraft = false;
       link = updated;
@@ -134,8 +155,34 @@ function buildLinkRow(
     return true;
   };
   typeSelect.addEventListener("change", () => {
+    const isAsset = typeSelect.value === "asset";
+    urlInput.hidden = isAsset;
+    picker.hidden = !isAsset;
+    if (isAsset) {
+      if (link.type === "asset") urlInput.value = link.url;
+      picker.textContent = link.type === "asset" ? link.name || "Change asset" : "Choose Asset...";
+    } else if (link.type === "asset") {
+      urlInput.value = "";
+      urlInput.title = "";
+    } else if (!isDraft) {
+      void saveCurrent();
+    }
     updateButtons();
-    if (!isDraft) void saveCurrent();
+  });
+  picker.addEventListener("click", async () => {
+    try {
+      const asset = await chooseAsset();
+      if (!asset) return;
+      urlInput.value = asset.url;
+      assetName = asset.name;
+      picker.textContent = asset.name;
+      picker.title = asset.name;
+      updateButtons();
+      await saveCurrent();
+      updateButtons();
+    } catch {
+      picker.title = "Could not open Owlbear asset picker; try again";
+    }
   });
   urlInput.addEventListener("change", () => { void saveCurrent(); });
 
@@ -156,10 +203,10 @@ function buildLinkRow(
 
   showButton.addEventListener("click", async (event) => {
     event.stopPropagation();
-    if (await saveCurrent()) await showLink(urlInput.value.trim(), typeSelect.value as ModalContentType, tokenName);
+    if (await saveCurrent()) await showLink(urlInput.value.trim(), typeSelect.value as ModalContentType, tokenName, assetName);
   });
 
-  row.append(number, typeSelect, urlInput, removeButton, viewButton, showButton);
+  row.append(number, typeSelect, urlInput, picker, removeButton, viewButton, showButton);
   return row;
 }
 
@@ -217,11 +264,11 @@ function render(items: Item[]) {
       event.stopPropagation();
       if (addButton.disabled) return;
       addButton.disabled = true;
-      const draft = buildLinkRow(item.id, tokenName, links.length, { type: "image", url: "" }, () => {
+      const draft = buildLinkRow(item.id, tokenName, links.length, { type: "asset", url: "" }, () => {
         addButton.disabled = false;
       });
       rows.appendChild(draft);
-      draft.querySelector<HTMLInputElement>(".link-url")?.focus();
+      draft.querySelector<HTMLButtonElement>(".asset-picker")?.focus();
     });
     li.addEventListener("click", () => focusItem(item.id));
     listEl.appendChild(li);
@@ -262,11 +309,11 @@ async function viewLink(url: string, contentType: ModalContentType) {
   });
 }
 
-async function showLink(url: string, contentType: ModalContentType, tokenName: string) {
+async function showLink(url: string, contentType: ModalContentType, tokenName: string, assetName?: string) {
   if (!url) {
     return;
   }
-  const message: ModalShowMessage = { id: crypto.randomUUID(), url, contentType, tokenName };
+  const message: ModalShowMessage = { id: crypto.randomUUID(), url, contentType, tokenName, assetName };
   await OBR.broadcast.sendMessage(BROADCAST_SHOW_CHANNEL, message, {
     destination: "ALL",
   });
@@ -313,6 +360,12 @@ OBR.onReady(async () => {
   const metadata = await OBR.room.getMetadata();
   const initialSize = readPreviewSize(metadata[PREVIEW_SIZE_KEY]).height;
   previewSizeInput.value = String(initialSize);
+  previewLocationSelect.value = readPreviewLocation(metadata[PREVIEW_LOCATION_KEY]);
+  previewLocationSelect.addEventListener("change", async () => {
+    await OBR.room.setMetadata({
+      [PREVIEW_LOCATION_KEY]: readPreviewLocation(previewLocationSelect.value),
+    });
+  });
   if (metadata[PREVIEW_SIZE_KEY] === undefined) {
     await OBR.room.setMetadata({ [PREVIEW_SIZE_KEY]: DEFAULT_PREVIEW_SIZE });
   }

@@ -10,6 +10,7 @@ export const BROADCAST_HIDE_CHANNEL = `${EXTENSION_ID}/modal-hide`;
 export const VIEWER_MODAL_ID = `${EXTENSION_ID}/viewer-modal`;
 export const PREVIEW_POPOVER_ID = `${EXTENSION_ID}/preview-popover`;
 export const PREVIEW_SIZE_KEY = `${EXTENSION_ID}/preview-size`;
+export const PREVIEW_LOCATION_KEY = `${EXTENSION_ID}/preview-location`;
 
 export interface PreviewSize {
   width: number;
@@ -19,6 +20,15 @@ export interface PreviewSize {
 export const DEFAULT_PREVIEW_SIZE: PreviewSize = { width: 400, height: 300 };
 export const MIN_PREVIEW_HEIGHT = 200;
 export const MAX_PREVIEW_HEIGHT = 600;
+
+export type PreviewLocation = "bottom-left" | "bottom-right" | "top-left" | "top-right";
+export const DEFAULT_PREVIEW_LOCATION: PreviewLocation = "bottom-left";
+
+export function readPreviewLocation(value: unknown): PreviewLocation {
+  return value === "bottom-right" || value === "top-left" || value === "top-right"
+    ? value
+    : DEFAULT_PREVIEW_LOCATION;
+}
 
 export function readPreviewSize(value: unknown): PreviewSize {
   if (!value || typeof value !== "object") return DEFAULT_PREVIEW_SIZE;
@@ -30,13 +40,14 @@ export function readPreviewSize(value: unknown): PreviewSize {
   return { width: Math.round(size.height * 4 / 3), height: size.height };
 }
 
-export type ModalContentType = "image" | "page";
+export type ModalContentType = "asset" | "image" | "page";
 
 export const MAX_HANDOUT_LINKS = 3;
 
 export interface HandoutLink {
   type: ModalContentType;
   url: string;
+  name?: string;
 }
 
 export interface HandoutLinks {
@@ -57,11 +68,17 @@ export function readHandoutLinks(value: unknown): HandoutLink[] {
     return data.links
       .filter((link): link is HandoutLink =>
         link !== null && typeof link === "object" &&
-        (link.type === "image" || link.type === "page") &&
+        (link.type === "asset" || link.type === "image" || link.type === "page") &&
         typeof link.url === "string" && link.url.trim().length > 0,
       )
       .slice(0, MAX_HANDOUT_LINKS)
-      .map((link) => ({ type: link.type, url: link.url.trim() }));
+      .map((link) => ({
+        type: link.type,
+        url: link.url.trim(),
+        ...(link.type === "asset" && typeof link.name === "string" && link.name.trim()
+          ? { name: link.name.trim() }
+          : {}),
+      }));
   }
   const links: HandoutLink[] = [];
   if (typeof data.imageUrl === "string" && data.imageUrl.trim()) {
@@ -78,4 +95,5 @@ export interface ModalShowMessage {
   url: string;
   contentType: ModalContentType;
   tokenName: string;
+  assetName?: string;
 }
