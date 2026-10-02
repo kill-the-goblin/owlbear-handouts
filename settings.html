@@ -20,8 +20,7 @@
       #header {
         flex-shrink: 0;
         display: flex;
-        align-items: baseline;
-        justify-content: space-between;
+        align-items: center;
         gap: 8px;
         padding: 18px 12px 16px;
         border-bottom: 1px solid rgba(255, 255, 255, 0.14);
@@ -32,11 +31,19 @@
       }
       #header-name { display: flex; align-items: baseline; gap: 7px; }
       #header-version { color: #999; font-size: 11px; }
+      #header-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-left: auto;
+      }
       #header-count {
         flex-shrink: 0;
+        white-space: nowrap;
         color: #aaa;
         font-size: 14px;
       }
+      #header-count strong { color: #f0f0f0; }
       #empty {
         padding: 16px 12px;
         color: #aaa;
@@ -316,12 +323,8 @@
       #preview-size:focus { outline: none; border-color: #8b9dc3; }
       #preview-unit { color: #aaa; }
       #transfer-tools {
-        flex-shrink: 0;
         display: flex;
-        justify-content: flex-end;
-        gap: 8px;
-        padding: 7px 12px;
-        border-top: 1px solid rgba(255, 255, 255, 0.14);
+        gap: 6px;
       }
       #transfer-tools[hidden] { display: none; }
       #transfer-tools button, #import-dialog button {
@@ -356,7 +359,14 @@
   <body>
     <div id="header">
       <span id="header-name"><span id="header-title">Handouts</span><span id="header-version"></span></span>
-      <span id="header-count"></span>
+      <span id="header-actions">
+        <span id="header-count"><strong id="header-count-number">0</strong> <span id="header-count-label">Handouts</span></span>
+        <span id="transfer-tools">
+          <button id="export-handouts" type="button">Export</button>
+          <button id="import-handouts" type="button">Import</button>
+          <input id="import-file" type="file" accept=".json,application/json" hidden aria-label="Choose Handouts export file" />
+        </span>
+      </span>
     </div>
     <div id="list-tools">
       <input id="search" type="search" placeholder="Search Handouts..." aria-label="Search handouts" />
@@ -365,11 +375,6 @@
     <div id="status" role="status"></div>
     <div id="empty" hidden>No handouts in this scene yet.</div>
     <ul id="list"></ul>
-    <div id="transfer-tools">
-      <button id="export-handouts" type="button">Export</button>
-      <button id="import-handouts" type="button">Import</button>
-      <input id="import-file" type="file" accept=".json,application/json" hidden aria-label="Choose Handouts export file" />
-    </div>
     <dialog id="import-dialog" aria-labelledby="import-title">
       <h2 id="import-title">Import handouts</h2>
       <p id="import-summary"></p>

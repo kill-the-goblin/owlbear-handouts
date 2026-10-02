@@ -14,6 +14,8 @@ import {
 const listEl = document.querySelector<HTMLUListElement>("#list")!;
 const emptyEl = document.querySelector<HTMLDivElement>("#empty")!;
 const countEl = document.querySelector<HTMLSpanElement>("#header-count")!;
+const countNumberEl = document.querySelector<HTMLElement>("#header-count-number")!;
+const countLabelEl = document.querySelector<HTMLSpanElement>("#header-count-label")!;
 const searchInput = document.querySelector<HTMLInputElement>("#search")!;
 const addButton = document.querySelector<HTMLButtonElement>("#add-handout")!;
 const exportButton = document.querySelector<HTMLButtonElement>("#export-handouts")!;
@@ -84,7 +86,8 @@ function render() {
   if (drag) cancelDrag();
   const query = searchInput.value.trim().toLocaleLowerCase();
   const visible = handouts.filter((handout) => handout.title.toLocaleLowerCase().includes(query));
-  countEl.textContent = `${handouts.length} Handout${handouts.length === 1 ? "" : "s"}`;
+  countNumberEl.textContent = String(handouts.length);
+  countLabelEl.textContent = `Handout${handouts.length === 1 ? "" : "s"}`;
   listEl.replaceChildren(...visible.map((handout) => buildRow(handout, !query && handouts.length > 1)));
   emptyEl.hidden = visible.length > 0;
   emptyEl.textContent = handouts.length === 0
