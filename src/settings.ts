@@ -32,6 +32,7 @@ document.querySelector<HTMLSpanElement>("#header-version")!.textContent = versio
 const EYE_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
 const CAST_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg>';
 const GRIP_ICON = '<svg viewBox="0 0 16 20" width="12" height="18" fill="currentColor" aria-hidden="true"><circle cx="5" cy="4" r="1.3"/><circle cx="11" cy="4" r="1.3"/><circle cx="5" cy="10" r="1.3"/><circle cx="11" cy="10" r="1.3"/><circle cx="5" cy="16" r="1.3"/><circle cx="11" cy="16" r="1.3"/></svg>';
+const TRASH_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M5 6l1 14h12l1-14M10 10v7M14 10v7"/></svg>';
 
 let handouts: SceneHandout[] = [];
 const expandedIds = new Set<string>();
@@ -208,7 +209,7 @@ function buildRow(handout: SceneHandout, canReorder: boolean): HTMLLIElement {
 
   const view = actionButton(EYE_ICON, `View ${handout.title} privately`);
   const present = actionButton(CAST_ICON, `Present ${handout.title} to players`);
-  const remove = actionButton("×", `Delete ${handout.title}`);
+  const remove = actionButton(TRASH_ICON, `Delete ${handout.title}`);
   remove.classList.add("delete-button");
   view.disabled = !handout.url.trim();
   present.disabled = !handout.url.trim();
