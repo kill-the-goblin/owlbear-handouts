@@ -1,6 +1,7 @@
 import OBR, { Item, isImage } from "@owlbear-rodeo/sdk";
 import { assetLabel, chooseAsset } from "./assets";
 import { presentHandout } from "./presentation";
+import { exportHandouts, parseHandoutExport } from "./transfer";
 import { version } from "../package.json";
 import {
   VIEWER_MODAL_ID, METADATA_KEY, SCENE_HANDOUTS_KEY,
@@ -15,6 +16,11 @@ const emptyEl = document.querySelector<HTMLDivElement>("#empty")!;
 const countEl = document.querySelector<HTMLSpanElement>("#header-count")!;
 const searchInput = document.querySelector<HTMLInputElement>("#search")!;
 const addButton = document.querySelector<HTMLButtonElement>("#add-handout")!;
+const exportButton = document.querySelector<HTMLButtonElement>("#export-handouts")!;
+const importButton = document.querySelector<HTMLButtonElement>("#import-handouts")!;
+const importFile = document.querySelector<HTMLInputElement>("#import-file")!;
+const importDialog = document.querySelector<HTMLDialogElement>("#import-dialog")!;
+const importSummary = document.querySelector<HTMLParagraphElement>("#import-summary")!;
 const statusEl = document.querySelector<HTMLDivElement>("#status")!;
 const previewSizeInput = document.querySelector<HTMLInputElement>("#preview-size")!;
 const previewLocationSelect = document.querySelector<HTMLSelectElement>("#preview-location")!;
@@ -29,8 +35,11 @@ let handouts: SceneHandout[] = [];
 const expandedIds = new Set<string>();
 let saveQueue: Promise<void> = Promise.resolve();
 let sceneReady = false;
+let sceneGeneration = 0;
 let drag: { row: HTMLLIElement; pointerId: number; startY: number; y: number; active: boolean; frame: number | null } | null = null;
 addButton.disabled = true;
+exportButton.disabled = true;
+importButton.disabled = true;
 
 function legacyTokenName(item: Item): string {
   return isImage(item) && item.text.plainText.trim()
@@ -66,6 +75,8 @@ async function loadScene() {
   }
   handouts = readSceneHandouts(metadata[SCENE_HANDOUTS_KEY]);
   addButton.disabled = false;
+  exportButton.disabled = false;
+  importButton.disabled = false;
   render();
 }
 
@@ -114,10 +125,15 @@ function focusHandle(id: string) {
   row?.scrollIntoView({ block: "nearest" });
 }
 
-async function changeList(update: (list: SceneHandout[]) => SceneHandout[]) {
+async function changeList(update: (list: SceneHandout[]) => SceneHandout[], expectedGeneration?: number) {
   const write = saveQueue.catch(() => {}).then(async () => {
-    if (!sceneReady) return;
+    if (!sceneReady) {
+      if (expectedGeneration !== undefined) throw new Error("Scene changed during import.");
+      return;
+    }
+    if (expectedGeneration !== undefined && expectedGeneration !== sceneGeneration) throw new Error("Scene changed during import.");
     const metadata = await OBR.scene.getMetadata();
+    if (expectedGeneration !== undefined && expectedGeneration !== sceneGeneration) throw new Error("Scene changed during import.");
     const next = update(readSceneHandouts(metadata[SCENE_HANDOUTS_KEY]));
     await OBR.scene.setMetadata({ [SCENE_HANDOUTS_KEY]: next });
     handouts = next;
@@ -300,6 +316,7 @@ function showGmOnlyMessage() {
   emptyEl.textContent = "This panel is GM-only.";
   countEl.textContent = "";
   document.querySelector<HTMLDivElement>("#list-tools")!.hidden = true;
+  document.querySelector<HTMLDivElement>("#transfer-tools")!.hidden = true;
   previewSettings.hidden = true;
 }
 
@@ -348,6 +365,56 @@ OBR.onReady(async () => {
       /* Status is shown by changeList. */
     }
   });
+  exportButton.addEventListener("click", async () => {
+    try {
+      await saveQueue;
+      if (!sceneReady) return;
+      const metadata = await OBR.scene.getMetadata();
+      const list = readSceneHandouts(metadata[SCENE_HANDOUTS_KEY]);
+      const blob = new Blob([exportHandouts(list)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const download = document.createElement("a");
+      download.href = url;
+      download.download = `handouts-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.append(download);
+      download.click();
+      download.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      statusEl.textContent = `Exported ${list.length} handout${list.length === 1 ? "" : "s"}.`;
+    } catch {
+      statusEl.textContent = "Could not export handouts.";
+    }
+  });
+  importButton.addEventListener("click", () => importFile.click());
+  importFile.addEventListener("change", async () => {
+    const file = importFile.files?.[0];
+    importFile.value = "";
+    if (!file || !sceneReady) return;
+    if (file.size > 2 * 1024 * 1024) {
+      statusEl.textContent = "Import file is too large (2 MB maximum).";
+      return;
+    }
+    const destinationGeneration = sceneGeneration;
+    try {
+      const imported = parseHandoutExport(await file.text());
+      if (!sceneReady || destinationGeneration !== sceneGeneration) return;
+      importSummary.textContent = `Import ${imported.length} handout${imported.length === 1 ? "" : "s"} into this scene?`;
+      importDialog.returnValue = "cancel";
+      importDialog.showModal();
+      const choice = await new Promise<string>((resolve) => {
+        importDialog.addEventListener("close", () => resolve(importDialog.returnValue), { once: true });
+      });
+      if (!sceneReady || destinationGeneration !== sceneGeneration || (choice !== "append" && choice !== "replace")) return;
+      const copies = imported.map((entry) => ({ ...entry, id: crypto.randomUUID() }));
+      await changeList((list) => choice === "replace" ? copies : [...list, ...copies], destinationGeneration);
+      searchInput.value = "";
+      render();
+    } catch (error) {
+      statusEl.textContent = error instanceof SyntaxError
+        ? "Could not read JSON file. Nothing was imported."
+        : error instanceof Error ? error.message : "Could not import handouts.";
+    }
+  });
   OBR.scene.onMetadataChange((metadata) => {
     if (!sceneReady) return;
     const next = readSceneHandouts(metadata[SCENE_HANDOUTS_KEY]);
@@ -356,9 +423,17 @@ OBR.onReady(async () => {
     render();
   });
   OBR.scene.onReadyChange((ready) => {
+    sceneGeneration++;
     sceneReady = ready;
     if (ready) void loadScene();
-    else { handouts = []; addButton.disabled = true; render(); }
+    else {
+      if (importDialog.open) importDialog.close("cancel");
+      handouts = [];
+      addButton.disabled = true;
+      exportButton.disabled = true;
+      importButton.disabled = true;
+      render();
+    }
   });
   if (await OBR.scene.isReady()) await loadScene();
   else statusEl.textContent = "Open a scene to manage its handouts.";

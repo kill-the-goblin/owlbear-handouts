@@ -12,6 +12,8 @@ Open Handouts from Owlbear's extension action. Choose **+ Add Handout**, click i
 
 Existing token handouts are copied into the scene list once, when that scene is first opened with this version. The old token metadata is left intact as a backup. Each scene has its own list.
 
+Use **Export** to download the current scene's handouts as JSON. Open another scene (in this room or another room), choose **Import**, and select that file. **Append** adds copies to the destination list; **Replace all** overwrites its list. Import creates new handout IDs and leaves the source scene unchanged. If transferring between Owlbear accounts, check that the destination account can access any referenced Owlbear assets.
+
 ## Development
 
 ```

@@ -315,6 +315,42 @@
       #preview-size::-webkit-inner-spin-button { margin-left: 5px; }
       #preview-size:focus { outline: none; border-color: #8b9dc3; }
       #preview-unit { color: #aaa; }
+      #transfer-tools {
+        flex-shrink: 0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        padding: 7px 12px;
+        border-top: 1px solid rgba(255, 255, 255, 0.14);
+      }
+      #transfer-tools[hidden] { display: none; }
+      #transfer-tools button, #import-dialog button {
+        padding: 4px 9px;
+        color: #f0f0f0;
+        background: #3a526e;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        font: inherit;
+        cursor: pointer;
+      }
+      #transfer-tools button:disabled { opacity: .5; cursor: default; }
+      #import-dialog {
+        box-sizing: border-box;
+        width: calc(100% - 24px);
+        max-width: 420px;
+        padding: 16px;
+        color: #f0f0f0;
+        background: #292d33;
+        border: 1px solid #637894;
+        border-radius: 6px;
+        font: inherit;
+      }
+      #import-dialog::backdrop { background: rgba(0, 0, 0, .65); }
+      #import-dialog h2 { margin: 0 0 8px; font-size: 16px; }
+      #import-dialog p { margin: 0 0 10px; }
+      #import-dialog form { display: flex; flex-wrap: wrap; gap: 7px; }
+      #import-dialog button[value="replace"] { background: #694247; }
+      #import-dialog button[value="cancel"] { background: transparent; }
     </style>
   </head>
   <body>
@@ -329,6 +365,20 @@
     <div id="status" role="status"></div>
     <div id="empty" hidden>No handouts in this scene yet.</div>
     <ul id="list"></ul>
+    <div id="transfer-tools">
+      <button id="export-handouts" type="button">Export</button>
+      <button id="import-handouts" type="button">Import</button>
+      <input id="import-file" type="file" accept=".json,application/json" hidden aria-label="Choose Handouts export file" />
+    </div>
+    <dialog id="import-dialog" aria-labelledby="import-title">
+      <h2 id="import-title">Import handouts</h2>
+      <p id="import-summary"></p>
+      <form method="dialog">
+        <button value="append">Append</button>
+        <button value="replace">Replace all</button>
+        <button value="cancel">Cancel</button>
+      </form>
+    </dialog>
     <div id="preview-settings">
       <div class="preview-control">
         <label for="preview-location">Preview Location</label>
