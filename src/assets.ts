@@ -9,8 +9,12 @@ const CATEGORY_LABELS: Record<ImageAssetType, string> = {
   NOTE: "Notes",
 };
 
+export function assetCategoryLabel(category: ImageAssetType): string {
+  return CATEGORY_LABELS[category];
+}
+
 export function assetLabel(name: string, category?: ImageAssetType): string {
-  return category ? `${CATEGORY_LABELS[category]} / ${name}` : name;
+  return category ? `${assetCategoryLabel(category)} / ${name}` : name;
 }
 
 export async function chooseAsset(): Promise<{ url: string; name: string; category: ImageAssetType } | undefined> {

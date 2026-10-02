@@ -173,6 +173,7 @@ export interface ModalShowMessage {
   contentType: ModalContentType;
   handoutName: string;
   assetName?: string;
+  handoutId?: string;
 }
 
 export interface ActivePresentation extends ModalShowMessage {
@@ -195,5 +196,6 @@ export function readActivePresentation(value: unknown): ActivePresentation | und
     handoutName: typeof data.handoutName === "string" ? data.handoutName : "Handout",
     presenterConnectionId: data.presenterConnectionId,
     ...(typeof data.assetName === "string" ? { assetName: data.assetName } : {}),
+    ...(typeof data.handoutId === "string" ? { handoutId: data.handoutId } : {}),
   };
 }

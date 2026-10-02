@@ -160,6 +160,11 @@
       .expand-button { width: 20px; color: #bbb; font-size: 17px; }
       #list li.is-dragging { background: #3a526e; box-shadow: inset 0 0 0 1px #8b9dc3; }
       .delete-button { color: #ef6b6b; }
+      .present-button.is-presenting {
+        color: #ef6b6b;
+        background: rgba(239, 107, 107, 0.18);
+      }
+      .present-button.is-presenting:hover { background: rgba(239, 107, 107, 0.28); }
       .row-header {
         display: flex;
         align-items: center;
@@ -236,6 +241,7 @@
         cursor: pointer;
       }
       .asset-picker.is-placeholder { font-style: italic; }
+      .asset-category { color: #999; }
       .link-url::placeholder { font-style: italic; }
       .asset-picker:hover { border-color: rgba(255, 255, 255, 0.2); }
       .link-url:hover {

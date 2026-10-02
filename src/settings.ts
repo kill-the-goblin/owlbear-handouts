@@ -1,13 +1,13 @@
 import OBR, { Item, isImage } from "@owlbear-rodeo/sdk";
-import { assetLabel, chooseAsset } from "./assets";
-import { presentHandout } from "./presentation";
+import { assetCategoryLabel, assetLabel, chooseAsset } from "./assets";
+import { dismissHandout, presentHandout } from "./presentation";
 import { exportHandouts, parseHandoutExport } from "./transfer";
 import { version } from "../package.json";
 import {
-  VIEWER_MODAL_ID, METADATA_KEY, SCENE_HANDOUTS_KEY,
+  VIEWER_MODAL_ID, METADATA_KEY, SCENE_HANDOUTS_KEY, ACTIVE_PRESENTATION_KEY,
   PREVIEW_SIZE_KEY, PREVIEW_LOCATION_KEY, PREVIEW_POPOVER_ID,
-  DEFAULT_PREVIEW_SIZE, readPreviewSize, readPreviewLocation,
-  readHandoutLinks, readSceneHandouts, switchHandoutType, reorderHandouts, moveHandout,
+  DEFAULT_PREVIEW_SIZE, readPreviewSize, readPreviewLocation, readActivePresentation,
+  ActivePresentation, readHandoutLinks, readSceneHandouts, switchHandoutType, reorderHandouts, moveHandout,
   SceneHandout, ModalContentType, ModalShowMessage,
 } from "./constants";
 
@@ -33,12 +33,14 @@ const EYE_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" st
 const CAST_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg>';
 const GRIP_ICON = '<svg viewBox="0 0 16 20" width="12" height="18" fill="currentColor" aria-hidden="true"><circle cx="5" cy="4" r="1.3"/><circle cx="11" cy="4" r="1.3"/><circle cx="5" cy="10" r="1.3"/><circle cx="11" cy="10" r="1.3"/><circle cx="5" cy="16" r="1.3"/><circle cx="11" cy="16" r="1.3"/></svg>';
 const TRASH_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M5 6l1 14h12l1-14M10 10v7M14 10v7"/></svg>';
+const STOP_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>';
 
 let handouts: SceneHandout[] = [];
 const expandedIds = new Set<string>();
 let saveQueue: Promise<void> = Promise.resolve();
 let sceneReady = false;
 let sceneGeneration = 0;
+let activePresentation: ActivePresentation | undefined;
 let drag: { row: HTMLLIElement; pointerId: number; startY: number; y: number; active: boolean; frame: number | null } | null = null;
 addButton.disabled = true;
 exportButton.disabled = true;
@@ -94,6 +96,22 @@ function render() {
   emptyEl.textContent = handouts.length === 0
     ? "No handouts in this scene yet."
     : "No handouts match your search.";
+}
+
+function updatePresentationButtons() {
+  for (const row of listEl.children) {
+    const handout = handouts.find((entry) => entry.id === (row as HTMLLIElement).dataset.handoutId);
+    const button = row.querySelector<HTMLButtonElement>(".present-button");
+    if (!handout || !button) continue;
+    const isPresenting = activePresentation?.handoutId === handout.id;
+    const label = `${isPresenting ? "Dismiss" : "Present"} ${handout.title} ${isPresenting ? "for" : "to"} players`;
+    button.innerHTML = isPresenting ? STOP_ICON : CAST_ICON;
+    button.classList.toggle("is-presenting", isPresenting);
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    button.setAttribute("aria-pressed", String(isPresenting));
+    button.disabled = !isPresenting && !handout.url.trim();
+  }
 }
 
 function cancelDrag() {
@@ -209,10 +227,19 @@ function buildRow(handout: SceneHandout, canReorder: boolean): HTMLLIElement {
 
   const view = actionButton(EYE_ICON, `View ${handout.title} privately`);
   const present = actionButton(CAST_ICON, `Present ${handout.title} to players`);
+  present.classList.add("present-button");
+  const isPresenting = activePresentation?.handoutId === handout.id;
+  if (isPresenting) {
+    present.innerHTML = STOP_ICON;
+    present.classList.add("is-presenting");
+    present.title = `Dismiss ${handout.title} for players`;
+    present.setAttribute("aria-label", present.title);
+  }
+  present.setAttribute("aria-pressed", String(isPresenting));
   const remove = actionButton(TRASH_ICON, `Delete ${handout.title}`);
   remove.classList.add("delete-button");
   view.disabled = !handout.url.trim();
-  present.disabled = !handout.url.trim();
+  present.disabled = !isPresenting && !handout.url.trim();
   view.addEventListener("click", async () => {
     try { await saveQueue; } catch { return; }
     const current = handouts.find((entry) => entry.id === handout.id);
@@ -224,14 +251,30 @@ function buildRow(handout: SceneHandout, canReorder: boolean): HTMLLIElement {
     });
   });
   present.addEventListener("click", async () => {
-    try { await saveQueue; } catch { return; }
-    const current = handouts.find((entry) => entry.id === handout.id);
-    if (!current?.url.trim()) return;
-    const message: ModalShowMessage = {
-      id: crypto.randomUUID(), url: current.url, contentType: current.type,
-      handoutName: current.title, assetName: current.name,
-    };
-    await presentHandout(message);
+    present.disabled = true;
+    try {
+      await saveQueue;
+      const metadata = await OBR.room.getMetadata();
+      const active = readActivePresentation(metadata[ACTIVE_PRESENTATION_KEY]);
+      if (active?.handoutId === handout.id) {
+        await dismissHandout(active.id);
+      } else {
+        const current = handouts.find((entry) => entry.id === handout.id);
+        if (!current?.url.trim()) return;
+        const message: ModalShowMessage = {
+          id: crypto.randomUUID(), url: current.url, contentType: current.type,
+          handoutName: current.title, assetName: current.name, handoutId: current.id,
+        };
+        await presentHandout(message);
+      }
+      const latest = await OBR.room.getMetadata();
+      activePresentation = readActivePresentation(latest[ACTIVE_PRESENTATION_KEY]);
+      updatePresentationButtons();
+    } catch {
+      statusEl.textContent = "Could not update the player presentation.";
+    } finally {
+      present.disabled = activePresentation?.handoutId !== handout.id && !handouts.some((entry) => entry.id === handout.id && entry.url.trim());
+    }
   });
   remove.addEventListener("click", async () => {
     if (!confirm(`Delete “${handout.title}” from this scene?`)) return;
@@ -279,7 +322,7 @@ function buildRow(handout: SceneHandout, canReorder: boolean): HTMLLIElement {
   url.addEventListener("keydown", (event) => { if (event.key === "Enter") url.blur(); });
   url.addEventListener("input", () => {
     view.disabled = !url.value.trim();
-    present.disabled = !url.value.trim();
+    present.disabled = activePresentation?.handoutId !== handout.id && !url.value.trim();
   });
   url.addEventListener("change", async () => {
     try { await updateHandout(handout.id, { url: url.value.trim() }); }
@@ -289,7 +332,14 @@ function buildRow(handout: SceneHandout, canReorder: boolean): HTMLLIElement {
   const picker = document.createElement("button");
   picker.type = "button";
   picker.className = "asset-picker";
-  picker.textContent = handout.name ? assetLabel(handout.name, handout.assetCategory) : "Choose Asset...";
+  if (handout.name && handout.assetCategory) {
+    const category = document.createElement("span");
+    category.className = "asset-category";
+    category.textContent = `${assetCategoryLabel(handout.assetCategory)} / `;
+    picker.append(category, handout.name);
+  } else {
+    picker.textContent = handout.name || "Choose Asset...";
+  }
   picker.classList.toggle("is-placeholder", !handout.name);
   picker.title = handout.name ? assetLabel(handout.name, handout.assetCategory) : "Choose an Owlbear asset";
   picker.hidden = handout.type !== "asset";
@@ -329,6 +379,15 @@ OBR.onReady(async () => {
     showGmOnlyMessage();
     return;
   }
+
+  let receivedRoomMetadataChange = false;
+  OBR.room.onMetadataChange((metadata) => {
+    receivedRoomMetadataChange = true;
+    const next = readActivePresentation(metadata[ACTIVE_PRESENTATION_KEY]);
+    if (next?.id === activePresentation?.id) return;
+    activePresentation = next;
+    updatePresentationButtons();
+  });
 
   searchInput.addEventListener("input", render);
   listEl.addEventListener("pointermove", (event) => {
@@ -443,6 +502,10 @@ OBR.onReady(async () => {
   else statusEl.textContent = "Open a scene to manage its handouts.";
 
   const metadata = await OBR.room.getMetadata();
+  if (!receivedRoomMetadataChange) {
+    activePresentation = readActivePresentation(metadata[ACTIVE_PRESENTATION_KEY]);
+    updatePresentationButtons();
+  }
   const initialSize = readPreviewSize(metadata[PREVIEW_SIZE_KEY]).height;
   previewSizeInput.value = String(initialSize);
   previewLocationSelect.value = readPreviewLocation(metadata[PREVIEW_LOCATION_KEY]);
