@@ -27,6 +27,9 @@ const statusEl = document.querySelector<HTMLDivElement>("#status")!;
 const previewSizeInput = document.querySelector<HTMLInputElement>("#preview-size")!;
 const previewLocationSelect = document.querySelector<HTMLSelectElement>("#preview-location")!;
 const previewSettings = document.querySelector<HTMLDivElement>("#preview-settings")!;
+const previousButton = document.querySelector<HTMLButtonElement>("#previous-handout")!;
+const stopButton = document.querySelector<HTMLButtonElement>("#stop-handout")!;
+const nextButton = document.querySelector<HTMLButtonElement>("#next-handout")!;
 document.querySelector<HTMLSpanElement>("#header-version")!.textContent = version;
 
 const EYE_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -41,6 +44,7 @@ let saveQueue: Promise<void> = Promise.resolve();
 let sceneReady = false;
 let sceneGeneration = 0;
 let activePresentation: ActivePresentation | undefined;
+let navigating = false;
 let drag: { row: HTMLLIElement; pointerId: number; startY: number; y: number; active: boolean; frame: number | null } | null = null;
 addButton.disabled = true;
 exportButton.disabled = true;
@@ -96,6 +100,62 @@ function render() {
   emptyEl.textContent = handouts.length === 0
     ? "No handouts in this scene yet."
     : "No handouts match your search.";
+  updateNavigationButtons();
+}
+
+function updateNavigationButtons() {
+  const entries = handouts.filter((entry) => entry.url.trim());
+  const index = entries.findIndex((entry) => entry.id === activePresentation?.handoutId);
+  previousButton.disabled = navigating || !sceneReady || index <= 0;
+  stopButton.disabled = navigating || !activePresentation;
+  nextButton.disabled = navigating || !sceneReady || index < 0 || index >= entries.length - 1;
+}
+
+async function stopPresentation() {
+  if (navigating) return;
+  navigating = true;
+  updateNavigationButtons();
+  try {
+    const metadata = await OBR.room.getMetadata();
+    const active = readActivePresentation(metadata[ACTIVE_PRESENTATION_KEY]);
+    if (active) await dismissHandout(active.id);
+    activePresentation = readActivePresentation((await OBR.room.getMetadata())[ACTIVE_PRESENTATION_KEY]);
+    updatePresentationButtons();
+  } catch {
+    statusEl.textContent = "Could not dismiss the player presentation.";
+  } finally {
+    navigating = false;
+    updateNavigationButtons();
+  }
+}
+
+async function navigatePresentation(direction: -1 | 1) {
+  if (navigating || !sceneReady) return;
+  const generation = sceneGeneration;
+  navigating = true;
+  updateNavigationButtons();
+  try {
+    await saveQueue;
+    if (!sceneReady || generation !== sceneGeneration) return;
+    const metadata = await OBR.room.getMetadata();
+    if (!sceneReady || generation !== sceneGeneration) return;
+    const active = readActivePresentation(metadata[ACTIVE_PRESENTATION_KEY]);
+    const entries = handouts.filter((entry) => entry.url.trim());
+    const index = entries.findIndex((entry) => entry.id === active?.handoutId);
+    const next = index < 0 ? undefined : entries[index + direction];
+    if (!next) return;
+    await presentHandout({
+      id: crypto.randomUUID(), url: next.url, contentType: next.type,
+      handoutName: next.title, assetName: next.name, handoutId: next.id,
+    });
+    activePresentation = readActivePresentation((await OBR.room.getMetadata())[ACTIVE_PRESENTATION_KEY]);
+    updatePresentationButtons();
+  } catch {
+    statusEl.textContent = "Could not change the player presentation.";
+  } finally {
+    navigating = false;
+    updateNavigationButtons();
+  }
 }
 
 function updatePresentationButtons() {
@@ -104,7 +164,9 @@ function updatePresentationButtons() {
     const button = row.querySelector<HTMLButtonElement>(".present-button");
     if (!handout || !button) continue;
     const isPresenting = activePresentation?.handoutId === handout.id;
-    const label = `${isPresenting ? "Dismiss" : "Present"} ${handout.title} ${isPresenting ? "for" : "to"} players`;
+    const label = isPresenting
+      ? `Stop showing ${handout.title} to all players`
+      : `Show ${handout.title} to all players`;
     button.innerHTML = isPresenting ? STOP_ICON : CAST_ICON;
     button.classList.toggle("is-presenting", isPresenting);
     button.title = label;
@@ -112,6 +174,7 @@ function updatePresentationButtons() {
     button.setAttribute("aria-pressed", String(isPresenting));
     button.disabled = !isPresenting && !handout.url.trim();
   }
+  updateNavigationButtons();
 }
 
 function cancelDrag() {
@@ -232,7 +295,7 @@ function buildRow(handout: SceneHandout, canReorder: boolean): HTMLLIElement {
   if (isPresenting) {
     present.innerHTML = STOP_ICON;
     present.classList.add("is-presenting");
-    present.title = `Dismiss ${handout.title} for players`;
+    present.title = `Stop showing ${handout.title} to all players`;
     present.setAttribute("aria-label", present.title);
   }
   present.setAttribute("aria-pressed", String(isPresenting));
@@ -390,6 +453,9 @@ OBR.onReady(async () => {
   });
 
   searchInput.addEventListener("input", render);
+  previousButton.addEventListener("click", () => void navigatePresentation(-1));
+  stopButton.addEventListener("click", () => void stopPresentation());
+  nextButton.addEventListener("click", () => void navigatePresentation(1));
   listEl.addEventListener("pointermove", (event) => {
     if (!drag || event.pointerId !== drag.pointerId) return;
     drag.y = event.clientY;
@@ -443,7 +509,7 @@ OBR.onReady(async () => {
       download.click();
       download.remove();
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
-      statusEl.textContent = `Exported ${list.length} handout${list.length === 1 ? "" : "s"}.`;
+      statusEl.textContent = "";
     } catch {
       statusEl.textContent = "Could not export handouts.";
     }

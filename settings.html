@@ -295,18 +295,17 @@
         flex-shrink: 0;
         display: flex;
         align-items: center;
-        justify-content: space-between;
         gap: 8px;
-        padding: 9px 12px;
+        padding: 6px 12px;
         border-top: 1px solid rgba(255, 255, 255, 0.14);
-        font-size: 13px;
+        font-size: 11px;
       }
-      .preview-control { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+      .preview-control { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
       #preview-settings[hidden] { display: none; }
       #preview-location {
         box-sizing: border-box;
-        width: 131px;
-        padding: 4px 5px;
+        width: 100px;
+        padding: 3px 4px;
         color: #f0f0f0;
         background: rgba(255, 255, 255, 0.06);
         border: 1px solid rgba(255, 255, 255, 0.2);
@@ -316,8 +315,8 @@
       #preview-location:focus { outline: none; border-color: #8b9dc3; }
       #preview-size {
         box-sizing: border-box;
-        width: 62px;
-        padding: 4px 5px;
+        width: 52px;
+        padding: 3px 4px;
         color: #f0f0f0;
         background: rgba(255, 255, 255, 0.06);
         border: 1px solid rgba(255, 255, 255, 0.2);
@@ -328,6 +327,15 @@
       #preview-size::-webkit-inner-spin-button { margin-left: 5px; }
       #preview-size:focus { outline: none; border-color: #8b9dc3; }
       #preview-unit { color: #aaa; }
+      #presentation-nav { display: flex; gap: 2px; margin-left: auto; }
+      #presentation-nav span { display: flex; }
+      #presentation-nav button { display: grid; place-items: center; width: 25px; height: 25px; padding: 0; border: 0; border-radius: 4px; color: #f0f0f0; background: transparent; cursor: pointer; }
+      #presentation-nav svg { width: 19px; height: 19px; fill: currentColor; }
+      #presentation-nav button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.14); }
+      #presentation-nav button:disabled { color: #666; cursor: default; }
+      #presentation-nav #stop-handout:not(:disabled) { color: #ef6b6b; background: rgba(239, 107, 107, 0.18); }
+      #presentation-nav #stop-handout:hover:not(:disabled) { background: rgba(239, 107, 107, 0.28); }
+      #presentation-nav #stop-handout svg { width: 15px; height: 15px; }
       #transfer-tools {
         display: flex;
         gap: 6px;
@@ -404,6 +412,11 @@
         <label for="preview-size">Preview Height</label>
         <input id="preview-size" type="number" min="200" max="450" step="1" value="300" aria-label="Preview height in pixels" />
         <span id="preview-unit">px</span>
+      </div>
+      <div id="presentation-nav" aria-label="Presentation navigation">
+        <span title="Show the previous handout to players. Skips handouts without a URL."><button id="previous-handout" type="button" aria-label="Show previous handout to players" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 4 12l7 7V5Zm9 0-7 7 7 7V5Z"/></svg></button></span>
+        <span title="Stop showing the current handout to all players."><button id="stop-handout" type="button" aria-label="Stop showing the current handout to all players" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/></svg></button></span>
+        <span title="Show the next handout to players. Skips handouts without a URL."><button id="next-handout" type="button" aria-label="Show next handout to players" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 5 7 7-7 7V5Zm9 0 7 7-7 7V5Z"/></svg></button></span>
       </div>
     </div>
     <script type="module" src="/src/settings.ts"></script>

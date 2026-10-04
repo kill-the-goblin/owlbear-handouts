@@ -12,13 +12,12 @@ import {
   readPreviewLocation,
   readActivePresentation,
   PreviewLocation,
-  ModalContentType,
   ModalShowMessage,
   ActivePresentation,
 } from "./constants";
 
-function viewerUrl(url: string, contentType: ModalContentType, mode: "private" | "player"): string {
-  return `/viewer.html?${new URLSearchParams({ url, contentType, mode })}`;
+function viewerUrl(message: ModalShowMessage): string {
+  return `/viewer.html?${new URLSearchParams({ id: message.id, url: message.url, contentType: message.contentType, mode: "player" })}`;
 }
 
 function previewUrl(message: ModalShowMessage): string {
@@ -83,9 +82,10 @@ OBR.onReady(async () => {
     const message = presenterConnected ? stored : undefined;
 
     if (activeShowId !== message?.id) {
+      const hadActivePresentation = Boolean(activeShowId);
       if (activeShowId) {
         if (isGm) await OBR.popover.close(PREVIEW_POPOVER_ID);
-        else await OBR.modal.close(VIEWER_MODAL_ID);
+        else if (!message) await OBR.modal.close(VIEWER_MODAL_ID);
       }
       activeShowId = message?.id;
       activeShowMessage = isGm ? message : undefined;
@@ -94,10 +94,12 @@ OBR.onReady(async () => {
 
       if (isGm) {
         await openGmPreview(message, metadata);
-      } else {
+      } else if (!hadActivePresentation) {
+        // The player viewer stays mounted while a presentation is replaced.
+        // It swaps content on room metadata changes over a black background.
         await OBR.modal.open({
           id: VIEWER_MODAL_ID,
-          url: viewerUrl(message.url, message.contentType, "player"),
+          url: viewerUrl(message),
           fullScreen: true,
           hidePaper: true,
           hideBackdrop: true,

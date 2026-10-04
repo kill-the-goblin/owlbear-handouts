@@ -8,7 +8,7 @@ The preview defaults to 400 × 300 pixels at the bottom left. The GM can change 
 
 ## Use
 
-Open Handouts from Owlbear's extension action. Choose **+ Add Handout**, click its name to rename it, and choose an **Asset** or **Link**. Search filters the scene list by name. Use the eye icon to view privately or the present icon to show it to players.
+Open Handouts from Owlbear's extension action. Choose **+ Add Handout**, click its name to rename it, and choose an **Asset** or **Link**. Search filters the scene list by name. Use the eye icon to view privately or the present icon to show it to players. While presenting, use the arrows at the bottom right to move through handouts with URLs in the scene's saved order. The arrows stop at the first and last handout; the stop button between them dismisses the presentation.
 
 Existing token handouts are copied into the scene list once, when that scene is first opened with this version. The old token metadata is left intact as a backup. Each scene has its own list.
 
