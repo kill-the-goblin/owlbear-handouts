@@ -18,7 +18,7 @@ export function assetLabel(name: string, category?: ImageAssetType): string {
 }
 
 export async function chooseAsset(): Promise<{ url: string; name: string; category: ImageAssetType } | undefined> {
-  const [asset] = await OBR.assets.downloadImages(false);
+  const [asset] = await OBR.assets.downloadImages(false, undefined, "NOTE");
   const url = asset?.image.url?.trim();
   if (!url) return undefined;
   return { url, name: asset.name?.trim() || "Owlbear asset", category: asset.type };
