@@ -1,6 +1,7 @@
 import OBR from "@owlbear-rodeo/sdk";
-import { isImageLink } from "./constants";
+import { ACTIVE_PRESENTATION_KEY, isImageLink, readActivePresentation } from "./constants";
 import { dismissHandout } from "./presentation";
+import { renderHandoutText } from "./text";
 
 const params = new URLSearchParams(window.location.search);
 const id = params.get("id") ?? "";
@@ -14,13 +15,16 @@ const title = document.querySelector<HTMLSpanElement>("#title")!;
 const dismiss = document.querySelector<HTMLButtonElement>("#dismiss")!;
 
 const typeLabel = document.createElement("strong");
-typeLabel.textContent = contentType === "asset" ? "Asset" : "Link";
+typeLabel.textContent = contentType === "asset" ? "Asset" : contentType === "text" ? "Text" : "Link";
 title.replaceChildren(typeLabel, `: ${handoutName}`);
 title.title = `${typeLabel.textContent}: ${handoutName}`;
-urlLabel.textContent = contentType === "asset" ? assetName || "Owlbear asset" : url;
+urlLabel.textContent = contentType === "text" ? "" : contentType === "asset" ? assetName || "Owlbear asset" : url;
 urlLabel.title = url;
+urlLabel.hidden = contentType === "text";
 
-if (contentType === "asset" || isImageLink(url)) {
+if (contentType === "text") {
+  // The presentation text lives in room metadata, not in the preview URL.
+} else if (contentType === "asset" || isImageLink(url)) {
   const image = document.createElement("img");
   image.src = url;
   image.alt = "Handout preview";
@@ -34,6 +38,13 @@ if (contentType === "asset" || isImageLink(url)) {
 
 OBR.onReady(async () => {
   if ((await OBR.player.getRole()) !== "GM") return;
+  if (contentType === "text") {
+    const metadata = await OBR.room.getMetadata();
+    const active = readActivePresentation(metadata[ACTIVE_PRESENTATION_KEY]);
+    if (active?.id === id && active.contentType === "text") {
+      renderHandoutText(content, active.text ?? "", active.textTheme);
+    }
+  }
   dismiss.addEventListener("click", async () => {
     dismiss.disabled = true;
     try {

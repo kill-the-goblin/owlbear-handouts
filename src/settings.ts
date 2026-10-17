@@ -9,6 +9,7 @@ import {
   DEFAULT_PREVIEW_SIZE, readPreviewSize, readPreviewLocation, readActivePresentation,
   ActivePresentation, readHandoutLinks, readSceneHandouts, switchHandoutType, reorderHandouts, moveHandout,
   SceneHandout, ModalContentType, ModalShowMessage,
+  handoutHasContent, MAX_HANDOUT_TEXT,
 } from "./constants";
 
 const listEl = document.querySelector<HTMLUListElement>("#list")!;
@@ -104,7 +105,7 @@ function render() {
 }
 
 function updateNavigationButtons() {
-  const entries = handouts.filter((entry) => entry.url.trim());
+  const entries = handouts.filter(handoutHasContent);
   const index = entries.findIndex((entry) => entry.id === activePresentation?.handoutId);
   previousButton.disabled = navigating || !sceneReady || index <= 0;
   stopButton.disabled = navigating || !activePresentation;
@@ -140,13 +141,14 @@ async function navigatePresentation(direction: -1 | 1) {
     const metadata = await OBR.room.getMetadata();
     if (!sceneReady || generation !== sceneGeneration) return;
     const active = readActivePresentation(metadata[ACTIVE_PRESENTATION_KEY]);
-    const entries = handouts.filter((entry) => entry.url.trim());
+    const entries = handouts.filter(handoutHasContent);
     const index = entries.findIndex((entry) => entry.id === active?.handoutId);
     const next = index < 0 ? undefined : entries[index + direction];
     if (!next) return;
     await presentHandout({
       id: crypto.randomUUID(), url: next.url, contentType: next.type,
       handoutName: next.title, assetName: next.name, handoutId: next.id,
+      text: next.text, textTheme: next.textTheme,
     });
     activePresentation = readActivePresentation((await OBR.room.getMetadata())[ACTIVE_PRESENTATION_KEY]);
     updatePresentationButtons();
@@ -172,7 +174,7 @@ function updatePresentationButtons() {
     button.title = label;
     button.setAttribute("aria-label", label);
     button.setAttribute("aria-pressed", String(isPresenting));
-    button.disabled = !isPresenting && !handout.url.trim();
+    button.disabled = !isPresenting && !handoutHasContent(handout);
   }
   updateNavigationButtons();
 }
@@ -301,15 +303,15 @@ function buildRow(handout: SceneHandout, canReorder: boolean): HTMLLIElement {
   present.setAttribute("aria-pressed", String(isPresenting));
   const remove = actionButton(TRASH_ICON, `Delete ${handout.title}`);
   remove.classList.add("delete-button");
-  view.disabled = !handout.url.trim();
-  present.disabled = !isPresenting && !handout.url.trim();
+  view.disabled = !handoutHasContent(handout);
+  present.disabled = !isPresenting && !handoutHasContent(handout);
   view.addEventListener("click", async () => {
     try { await saveQueue; } catch { return; }
     const current = handouts.find((entry) => entry.id === handout.id);
-    if (!current?.url.trim()) return;
+    if (!current || !handoutHasContent(current)) return;
     await OBR.modal.open({
       id: VIEWER_MODAL_ID,
-      url: `/viewer.html?${new URLSearchParams({ url: current.url, contentType: current.type, mode: "private" })}`,
+      url: `/viewer.html?${new URLSearchParams({ url: current.url, contentType: current.type, mode: "private", handoutId: current.id })}`,
       fullScreen: true, hidePaper: true, hideBackdrop: true,
     });
   });
@@ -323,10 +325,11 @@ function buildRow(handout: SceneHandout, canReorder: boolean): HTMLLIElement {
         await dismissHandout(active.id);
       } else {
         const current = handouts.find((entry) => entry.id === handout.id);
-        if (!current?.url.trim()) return;
+        if (!current || !handoutHasContent(current)) return;
         const message: ModalShowMessage = {
           id: crypto.randomUUID(), url: current.url, contentType: current.type,
           handoutName: current.title, assetName: current.name, handoutId: current.id,
+          text: current.text, textTheme: current.textTheme,
         };
         await presentHandout(message);
       }
@@ -336,7 +339,7 @@ function buildRow(handout: SceneHandout, canReorder: boolean): HTMLLIElement {
     } catch {
       statusEl.textContent = "Could not update the player presentation.";
     } finally {
-      present.disabled = activePresentation?.handoutId !== handout.id && !handouts.some((entry) => entry.id === handout.id && entry.url.trim());
+      present.disabled = activePresentation?.handoutId !== handout.id && !handouts.some((entry) => entry.id === handout.id && handoutHasContent(entry));
     }
   });
   remove.addEventListener("click", async () => {
@@ -366,7 +369,7 @@ function buildRow(handout: SceneHandout, canReorder: boolean): HTMLLIElement {
   const type = document.createElement("select");
   type.className = "entry-type";
   type.setAttribute("aria-label", `${handout.title} type`);
-  for (const [value, label] of [["asset", "Asset"], ["link", "Link"]]) {
+  for (const [value, label] of [["asset", "Asset"], ["link", "Link"], ["text", "Text"]]) {
     const option = document.createElement("option");
     option.value = value;
     option.textContent = label;
@@ -380,7 +383,7 @@ function buildRow(handout: SceneHandout, canReorder: boolean): HTMLLIElement {
   url.placeholder = "Add URL...";
   url.value = handout.url;
   url.title = handout.url;
-  url.hidden = handout.type === "asset";
+  url.hidden = handout.type !== "link";
   url.setAttribute("aria-label", `${handout.title} URL`);
   url.addEventListener("keydown", (event) => { if (event.key === "Enter") url.blur(); });
   url.addEventListener("input", () => {
@@ -412,6 +415,39 @@ function buildRow(handout: SceneHandout, canReorder: boolean): HTMLLIElement {
       if (asset) await updateHandout(handout.id, { url: asset.url, name: asset.name, assetCategory: asset.category });
     } catch { statusEl.textContent = "Could not choose or save that asset."; }
   });
+  const textEditor = document.createElement("textarea");
+  textEditor.className = "entry-text";
+  textEditor.placeholder = "HTML to show players, e.g. <div style=\"font-family:'IM Fell English SC'\"><h1>A heading</h1><p>Body text.</p></div>";
+  textEditor.value = handout.text ?? "";
+  textEditor.maxLength = MAX_HANDOUT_TEXT;
+  textEditor.hidden = handout.type !== "text";
+  textEditor.setAttribute("aria-label", `${handout.title} text`);
+  textEditor.addEventListener("input", () => {
+    view.disabled = !textEditor.value.trim();
+    present.disabled = activePresentation?.handoutId !== handout.id && !textEditor.value.trim();
+  });
+  textEditor.addEventListener("change", async () => {
+    try { await updateHandout(handout.id, { text: textEditor.value }); }
+    catch { textEditor.value = handout.text ?? ""; }
+  });
+  const themeControls = document.createElement("div");
+  themeControls.className = "theme-controls";
+  themeControls.hidden = handout.type !== "text";
+  for (const [theme, glyph, label] of [["dark", "◐", "Dark: white text on black"], ["light", "◑", "Light: black text on white"]] as const) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `theme-${theme}`;
+    button.textContent = glyph;
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    button.setAttribute("aria-pressed", String((handout.textTheme ?? "dark") === theme));
+    button.addEventListener("click", async () => {
+      try { await updateHandout(handout.id, { textTheme: theme }); }
+      catch { /* Status is shown by changeList. */ }
+    });
+    themeControls.append(button);
+  }
+  bottom.classList.toggle("text-editor", handout.type === "text");
   type.addEventListener("change", async () => {
     const next = type.value as ModalContentType;
     try {
@@ -422,7 +458,7 @@ function buildRow(handout: SceneHandout, canReorder: boolean): HTMLLIElement {
     }
     catch { type.value = handout.type; }
   });
-  bottom.append(type, url, picker);
+  bottom.append(type, url, picker, textEditor, themeControls);
   li.append(top, bottom);
   return li;
 }

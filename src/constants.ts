@@ -40,7 +40,13 @@ export function readPreviewSize(value: unknown): PreviewSize {
   return { width: Math.round(height * 4 / 3), height };
 }
 
-export type ModalContentType = "asset" | "link";
+export type ModalContentType = "asset" | "link" | "text";
+export type TextTheme = "dark" | "light";
+export const MAX_HANDOUT_TEXT = 3000;
+
+export function handoutHasContent(handout: SceneHandout): boolean {
+  return Boolean((handout.type === "text" ? handout.text : handout.url)?.trim());
+}
 
 export function isImageLink(url: string): boolean {
   try {
@@ -64,6 +70,8 @@ export interface SceneHandout extends HandoutLink {
   assetCategory?: ImageAssetType;
   inactiveUrl?: string;
   inactiveName?: string;
+  text?: string;
+  textTheme?: TextTheme;
 }
 
 const ASSET_CATEGORIES = ["MAP", "PROP", "MOUNT", "CHARACTER", "ATTACHMENT", "NOTE"];
@@ -105,6 +113,8 @@ export function switchHandoutType(handout: SceneHandout, type: ModalContentType)
     ...(handout.assetCategory ? { assetCategory: handout.assetCategory } : {}),
     ...(type === "asset" && handout.inactiveName ? { name: handout.inactiveName } : {}),
     ...(handout.type === "asset" && handout.name ? { inactiveName: handout.name } : {}),
+    ...(handout.text !== undefined ? { text: handout.text } : {}),
+    ...(handout.textTheme ? { textTheme: handout.textTheme } : {}),
   };
 }
 
@@ -114,7 +124,7 @@ export function readSceneHandouts(value: unknown): SceneHandout[] {
     entry !== null && typeof entry === "object" &&
     typeof entry.id === "string" && entry.id.length > 0 &&
     typeof entry.title === "string" &&
-    (entry.type === "asset" || entry.type === "link") &&
+    (entry.type === "asset" || entry.type === "link" || entry.type === "text") &&
     typeof entry.url === "string",
   ).map((entry) => ({
     id: entry.id,
@@ -125,6 +135,8 @@ export function readSceneHandouts(value: unknown): SceneHandout[] {
     ...(typeof entry.name === "string" ? { name: entry.name } : {}),
     ...(typeof entry.inactiveUrl === "string" ? { inactiveUrl: entry.inactiveUrl } : {}),
     ...(typeof entry.inactiveName === "string" ? { inactiveName: entry.inactiveName } : {}),
+    ...(typeof entry.text === "string" ? { text: entry.text.slice(0, MAX_HANDOUT_TEXT) } : {}),
+    ...(entry.textTheme === "light" ? { textTheme: "light" as const } : {}),
   }));
 }
 
@@ -174,6 +186,8 @@ export interface ModalShowMessage {
   handoutName: string;
   assetName?: string;
   handoutId?: string;
+  text?: string;
+  textTheme?: TextTheme;
 }
 
 export interface ActivePresentation extends ModalShowMessage {
@@ -185,8 +199,9 @@ export function readActivePresentation(value: unknown): ActivePresentation | und
   const data = value as Partial<ActivePresentation>;
   if (
     typeof data.id !== "string" || !data.id ||
-    typeof data.url !== "string" || !data.url.trim() ||
-    (data.contentType !== "asset" && data.contentType !== "link") ||
+    typeof data.url !== "string" ||
+    (data.contentType !== "asset" && data.contentType !== "link" && data.contentType !== "text") ||
+    !(data.contentType === "text" ? typeof data.text === "string" && data.text.trim() : data.url.trim()) ||
     typeof data.presenterConnectionId !== "string" || !data.presenterConnectionId
   ) return undefined;
   return {
@@ -197,5 +212,7 @@ export function readActivePresentation(value: unknown): ActivePresentation | und
     presenterConnectionId: data.presenterConnectionId,
     ...(typeof data.assetName === "string" ? { assetName: data.assetName } : {}),
     ...(typeof data.handoutId === "string" ? { handoutId: data.handoutId } : {}),
+    ...(typeof data.text === "string" ? { text: data.text.slice(0, MAX_HANDOUT_TEXT) } : {}),
+    ...(data.textTheme === "light" ? { textTheme: "light" as const } : {}),
   };
 }

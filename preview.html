@@ -15,6 +15,16 @@
       #content { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 4px; }
       #content img { width: 100%; height: 100%; object-fit: contain; }
       #content iframe { width: 100%; height: 100%; border: 0; pointer-events: none; }
+      #content.text-mode { box-sizing: border-box; padding: 10px 10px calc(10px + 5vw); color: #fff; background: #000; font-family: Georgia, serif; font-size: max(10px, 3.5vw); line-height: 1.5; }
+      #content.text-mode.light-text { color: #000; background: #fff; }
+      .text-handout { max-width: 100%; max-height: 100%; overflow: auto; text-align: center; overflow-wrap: anywhere; }
+      .text-handout h1, .text-handout h2, .text-handout h3, .text-handout h4 { margin: 0; line-height: inherit; }
+      .text-handout h1 { font-size: 1.5em; }
+      .text-handout h2 { font-size: 1.3em; }
+      .text-handout h3 { font-size: 1.1em; }
+      .text-handout h4 { font-size: 1em; }
+      .text-handout p, .text-handout ul, .text-handout ol { margin: .4em 0; }
+      .text-handout ul, .text-handout ol { padding-left: 1.5em; text-align: left; }
       #url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #aaa; font-size: 11px; }
     </style>
   </head>

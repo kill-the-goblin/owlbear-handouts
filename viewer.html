@@ -28,6 +28,22 @@
         height: 100%;
         border: none;
       }
+      #content.text-mode {
+        box-sizing: border-box;
+        padding: 5vh 6vw calc(5vh + 60px);
+        color: #fff;
+        background: #000;
+        font: 40px/1.5 Georgia, serif;
+      }
+      #content.text-mode.light-text { color: #000; background: #fff; }
+      .text-handout { max-width: 72ch; max-height: 100%; overflow: auto; text-align: center; overflow-wrap: anywhere; }
+      .text-handout h1, .text-handout h2, .text-handout h3, .text-handout h4 { margin: 0; line-height: inherit; }
+      .text-handout h1 { font-size: 1.5em; }
+      .text-handout h2 { font-size: 1.3em; }
+      .text-handout h3 { font-size: 1.1em; }
+      .text-handout h4 { font-size: 1em; }
+      .text-handout p, .text-handout ul, .text-handout ol { margin: .4em 0; }
+      .text-handout ul, .text-handout ol { padding-left: 1.5em; text-align: left; }
       #content.dismissable {
         cursor: pointer;
       }

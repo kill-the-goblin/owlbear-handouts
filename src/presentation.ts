@@ -15,6 +15,7 @@ export async function presentHandout(message: ModalShowMessage): Promise<void> {
       presenterConnectionId: await OBR.player.getConnectionId(),
       ...(message.assetName ? { assetName: message.assetName } : {}),
       ...(message.handoutId ? { handoutId: message.handoutId } : {}),
+      ...(message.contentType === "text" ? { text: message.text, textTheme: message.textTheme ?? "dark" } : {}),
     },
   });
 }
